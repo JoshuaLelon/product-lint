@@ -87,7 +87,7 @@ async function main(): Promise<void> {
       for (const file of result.skipped) console.log(`skipped ${file}`);
       if (result.notes.length > 0) console.log("");
       for (const note of result.notes) console.log(note);
-      console.log("\nRun: product-lint check");
+      console.log("\nRun: npx product-lint check");
     }
     return;
   }
