@@ -12,6 +12,14 @@ test("a governed file deletion updates its Mechanism digest", async () => {
   const sync = await synchronizeStaged(config);
   assert.deepEqual(sync.diagnostics, []);
   assert.deepEqual(sync.updatedFiles, ["docs/mechanism/approval-command.json"]);
+
+  // The deletion is the evidence, so the orphaned claim goes with it. Leaving
+  // it would make the node claim a file the same commit removed.
+  const mechanism = JSON.parse(
+    await readFile(path.join(root, "docs", "mechanism", "approval-command.json"), "utf8"),
+  );
+  assert.deepEqual(mechanism.implementation.files, ["src/approve.ts"]);
+
   await git(root, "add", "docs/mechanism/approval-command.json");
   const check = await checkStagedCommit(config);
   assert.deepEqual(check.diagnostics, []);

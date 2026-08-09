@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0
+
+Breaking. A repository whose Mechanism nodes claim a path that matches nothing now fails
+`validate` and `check` with exit 1 where it previously passed. That is the point: the
+claim was already false and the tool said nothing.
+
+- New `PL0502 DEAD_IMPLEMENTATION_PATH`, one diagnostic per dead entry, naming the entry.
+  A Mechanism that lists two paths and resolves one used to report as valid and complete,
+  because every entry was collapsed into a single match. Each entry is now checked on its
+  own. A glob that matches no file is dead like any literal path.
+- `PL0502` is emitted from `validateSnapshot`, so plain `product-lint validate` catches it
+  and not only `check`. A node whose entries are *all* dead still reports `PL0501
+  MISSING_IMPLEMENTATION` alone, which states that fact better.
+- `knowledge sync --staged` now prunes an implementation entry when the staged change
+  proves it is gone: a literal path HEAD had and the index does not. Deleting a governed
+  file previously rewrote only the owner's digest and left the orphaned claim behind, so
+  the tool manufactured the very dead path it now reports. Nothing else is ever pruned. A
+  typo was never in HEAD, and a path moved outside a hooked commit is in neither, so both
+  keep reporting `PL0502` rather than being silently dropped.
+
 ## 0.1.0
 
 First public release.

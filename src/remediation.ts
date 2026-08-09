@@ -21,6 +21,8 @@ const FIXES: Record<string, string> = {
     "Read the code and draft the answer yourself. Put the draft to the user in one of the formats below. Create docs/mechanism/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
   "PL0501 MISSING_IMPLEMENTATION":
     "Add the repository paths this mechanism owns to implementation.files, then run product-lint knowledge sync --staged. A glob is allowed. Each path must exist.",
+  "PL0502 DEAD_IMPLEMENTATION_PATH":
+    "Remove the entry from implementation.files, or correct it to the path the file has now. Then run product-lint knowledge sync --staged.",
   "PL0601 UNMAPPED_FILE":
     "Add this path to implementation.files on the Mechanism node that owns it, or create a new Mechanism node for it. Then run product-lint knowledge sync --staged.",
 

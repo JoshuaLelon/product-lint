@@ -49,6 +49,45 @@ test("semantic upstream changes propagate synchronization to all descendants", a
   ]));
 });
 
+async function stageClaim(root, files) {
+  const mechanismPath = path.join(root, "docs", "mechanism", "approval-command.json");
+  const node = JSON.parse(await readFile(mechanismPath, "utf8"));
+  node.implementation.files = files;
+  await writeFile(mechanismPath, `${JSON.stringify(node, null, 2)}\n`);
+  await git(root, "add", "docs/mechanism/approval-command.json");
+  return mechanismPath;
+}
+
+test("synchronization refuses a dead path it cannot prove was deleted", async () => {
+  const { root, config } = await createRepository();
+  const mechanismPath = await stageClaim(root, [
+    "src/approve.ts",
+    "test/approve.test.ts",
+    "src/typo.ts",
+  ]);
+
+  const sync = await synchronizeStaged(config);
+  assert.deepEqual(sync.updatedFiles, []);
+  assert.ok(sync.diagnostics.some((item) => item.code === "PL0502 DEAD_IMPLEMENTATION_PATH"));
+
+  // src/typo.ts was never in HEAD, so nothing proves it was deleted. Pruning it
+  // would silently narrow the claim instead of reporting it.
+  const after = JSON.parse(await readFile(mechanismPath, "utf8"));
+  assert.ok(after.implementation.files.includes("src/typo.ts"));
+});
+
+test("synchronization never prunes a glob, however dead", async () => {
+  const { root, config } = await createRepository();
+  const mechanismPath = await stageClaim(root, ["src/**", "test/**", "src/**/*.rs"]);
+
+  const sync = await synchronizeStaged(config);
+  assert.deepEqual(sync.updatedFiles, []);
+  assert.ok(sync.diagnostics.some((item) => item.code === "PL0502 DEAD_IMPLEMENTATION_PATH"));
+
+  const after = JSON.parse(await readFile(mechanismPath, "utf8"));
+  assert.ok(after.implementation.files.includes("src/**/*.rs"));
+});
+
 test("staged semantic changes fail before descendant synchronization", async () => {
   const { root, config } = await createRepository();
   const productPath = path.join(root, "docs", "product", "current-version.json");

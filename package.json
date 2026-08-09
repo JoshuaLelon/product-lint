@@ -1,6 +1,6 @@
 {
   "name": "product-lint",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic product-knowledge DAGs, staged synchronization, and commit guardrails.",
   "type": "module",
   "license": "MIT",

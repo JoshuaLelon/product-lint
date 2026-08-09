@@ -125,6 +125,7 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
       stagedValidation.graph,
       stagedSnapshot,
       "product-lint knowledge sync --staged",
+      headSnapshot,
     )),
   );
 

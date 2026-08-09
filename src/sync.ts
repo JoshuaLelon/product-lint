@@ -12,7 +12,7 @@ import { matchesAny } from "./glob.js";
 import { nodeFingerprint, serializeNode } from "./graph.js";
 import { digest, sha256 } from "./stable-json.js";
 import { createSnapshot } from "./repository.js";
-import { validateSnapshot } from "./validation.js";
+import { prunableDeadPath, validateSnapshot } from "./validation.js";
 import { ensureGitRepository, hasUnstagedChanges } from "./git.js";
 
 function cloneNode(node: SourceCanonicalNode): SourceCanonicalNode {
@@ -27,19 +27,24 @@ function cloneNode(node: SourceCanonicalNode): SourceCanonicalNode {
 }
 
 async function implementationDigest(
-  node: SourceCanonicalNode,
+  patterns: string[],
   snapshot: RepositorySnapshot,
 ): Promise<string> {
-  const patterns = node.implementation?.files ?? [];
   const files = snapshot.files.filter((file) => matchesAny(file, patterns)).sort();
   const entries: { path: string; content: string }[] = [];
   for (const file of files) entries.push({ path: file, content: sha256(await snapshot.readFile(file)) });
   return digest(entries, "product-lint-implementation-v1");
 }
 
+/**
+ * Pass `previous` to let synchronization prune implementation entries the
+ * change proves were deleted. Without it no entry is ever removed, so a caller
+ * with no earlier snapshot to compare against keeps the authored list intact.
+ */
 export async function expectedSynchronizedNodes(
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
+  previous?: RepositorySnapshot,
 ): Promise<Map<string, SourceCanonicalNode>> {
   const nodes = new Map<string, SourceCanonicalNode>();
   for (const [id, node] of graph.nodes) nodes.set(id, cloneNode(node));
@@ -53,10 +58,12 @@ export async function expectedSynchronizedNodes(
       constraintsDigest: digest(parentState, "product-lint-constraints-v1"),
     };
     if (node.level === "mechanism") {
-      const files = node.implementation?.files ?? [];
+      const files = (node.implementation?.files ?? []).filter(
+        (entry) => !previous || !prunableDeadPath(entry, snapshot, previous),
+      );
       node.implementation = {
-        files: [...files],
-        digest: await implementationDigest(node, snapshot),
+        files,
+        digest: await implementationDigest(files, snapshot),
       };
     }
   }
@@ -67,8 +74,9 @@ export async function synchronizationDiagnostics(
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
   command = "product-lint knowledge sync --staged",
+  previous?: RepositorySnapshot,
 ): Promise<Diagnostic[]> {
-  const expected = await expectedSynchronizedNodes(graph, snapshot);
+  const expected = await expectedSynchronizedNodes(graph, snapshot, previous);
   const diagnostics: Diagnostic[] = [];
   for (const [id, node] of graph.nodes) {
     const wanted = expected.get(id)!;
@@ -101,15 +109,33 @@ export async function synchronizationDiagnostics(
   return diagnostics;
 }
 
+/** True when this run will repair the diagnostic, so it must not also stop it. */
+function repairedByThisSync(
+  diagnostic: Diagnostic,
+  snapshot: RepositorySnapshot,
+  previous: RepositorySnapshot,
+): boolean {
+  if (diagnostic.code !== "PL0502 DEAD_IMPLEMENTATION_PATH") return false;
+  const entry = diagnostic.details?.deadPath;
+  return typeof entry === "string" && prunableDeadPath(entry, snapshot, previous);
+}
+
 export async function synchronizeStaged(config: ResolvedConfig): Promise<SyncResult> {
   await ensureGitRepository(config.root);
   const snapshot = await createSnapshot(config, "staged");
+  const previous = await createSnapshot(config, "head");
   const validation = await validateSnapshot(config, snapshot);
-  if (!validation.graph || validation.diagnostics.some((item) => item.severity === "error")) {
+  // Synchronization exists to repair derived state, so an error it is about to
+  // repair must not stop it first. Every other error is a claim synchronization
+  // cannot verify, and those still stop here.
+  const blocking = validation.diagnostics.filter(
+    (item) => item.severity === "error" && !repairedByThisSync(item, snapshot, previous),
+  );
+  if (!validation.graph || blocking.length > 0) {
     return { updatedFiles: [], unchangedFiles: [], diagnostics: validation.diagnostics };
   }
 
-  const expected = await expectedSynchronizedNodes(validation.graph, snapshot);
+  const expected = await expectedSynchronizedNodes(validation.graph, snapshot, previous);
   const updatedFiles: string[] = [];
   const unchangedFiles: string[] = [];
   const diagnostics: Diagnostic[] = [];
