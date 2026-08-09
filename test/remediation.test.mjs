@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { annotateDiagnostic, formatDiagnostic, STATEMENT_STYLE } from "../dist/index.js";
+import {
+  annotateDiagnostic,
+  ASK_FORMATS,
+  formatDiagnostic,
+  STATEMENT_STYLE,
+} from "../dist/index.js";
 
 function declaredCodes() {
   const codes = new Set();
@@ -43,6 +48,36 @@ test("prose diagnostics carry the writing style, others do not", () => {
     message: "",
   });
   assert.equal(structural.style, undefined);
+});
+
+test("frontier diagnostics offer ask formats instead of an open question", () => {
+  for (const code of [
+    "PL0001 MISSING_CONTEXT",
+    "PL0101 MISSING_PRODUCT",
+    "PL0201 MISSING_BEHAVIOR",
+    "PL0301 MISSING_ARCHITECTURE",
+    "PL0401 MISSING_MECHANISM",
+  ]) {
+    const annotated = annotateDiagnostic({ code, severity: "info", message: "" });
+    assert.equal(annotated.ask, ASK_FORMATS);
+    assert.match(annotated.ask, /Draft to confirm/);
+    assert.match(annotated.ask, /Candidates to choose/);
+    assert.match(annotated.ask, /Decision brief/);
+    // The old instruction put the whole burden on the user.
+    assert.doesNotMatch(annotated.fix, /Do not invent the answer/);
+  }
+
+  const structural = annotateDiagnostic({
+    code: "PL1105 KNOWLEDGE_CYCLE",
+    severity: "error",
+    message: "",
+  });
+  assert.equal(structural.ask, undefined);
+});
+
+test("the writing style stays self-contained", () => {
+  assert.match(STATEMENT_STYLE, /Simplified Technical English/);
+  assert.doesNotMatch(STATEMENT_STYLE, /skill/i);
 });
 
 test("an explicit fix is not overwritten by the table", () => {

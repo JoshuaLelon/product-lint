@@ -10,15 +10,15 @@ const FIXES: Record<string, string> = {
   // ask the user. Architecture and Mechanism follow from the code, so an agent may
   // propose them and let the user correct the proposal.
   "PL0001 MISSING_CONTEXT":
-    "Ask the user the question above. Do not invent the answer. Write the reply into a new docs/context/<name>.json built from details.nodeTemplate, then run product-lint knowledge sync --staged.",
+    "Search the repository for an existing answer first. Then put the question to the user in one of the formats below. Create docs/context/<name>.json from details.nodeTemplate, then run product-lint knowledge sync --staged.",
   "PL0101 MISSING_PRODUCT":
-    "Ask the user the question above. Do not invent the answer. Create docs/product/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
+    "Search the repository for an existing answer first. Then put the question to the user in one of the formats below. Create docs/product/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
   "PL0201 MISSING_BEHAVIOR":
-    "Ask the user the question above. Do not invent the answer. Create docs/behavior/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
+    "Search the repository for an existing answer first. Then put the question to the user in one of the formats below. Create docs/behavior/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
   "PL0301 MISSING_ARCHITECTURE":
-    "Propose an answer from the code, and tell the user what you proposed. Create docs/architecture/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
+    "Read the code and draft the answer yourself. Put the draft to the user in one of the formats below. Create docs/architecture/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
   "PL0401 MISSING_MECHANISM":
-    "Propose an answer from the code, and tell the user what you proposed. Create docs/mechanism/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
+    "Read the code and draft the answer yourself. Put the draft to the user in one of the formats below. Create docs/mechanism/<name>.json from details.nodeTemplate with this node in constrainedBy, then run product-lint knowledge sync --staged.",
   "PL0501 MISSING_IMPLEMENTATION":
     "Add the repository paths this mechanism owns to implementation.files, then run product-lint knowledge sync --staged. A glob is allowed. Each path must exist.",
   "PL0601 UNMAPPED_FILE":
@@ -124,12 +124,36 @@ const FIXES: Record<string, string> = {
 };
 
 /**
+ * An open question is expensive to answer, and the user has often answered it
+ * already somewhere in the repository. Each format below costs the user a
+ * confirmation or a choice instead of an essay. The agent does the work; the
+ * user keeps the decision.
+ */
+export const ASK_FORMATS = [
+  "Do the work before you ask. Read the README, docs/, the existing nodes, and the commit history first.",
+  "Then choose the lightest format that fits what you found.",
+  "1. Draft to confirm. Use this when the repository already answers the question. Write the statement, cite the file or commit you took it from, and ask the user to confirm or correct it.",
+  "2. Candidates to choose. Use this when two or three readings are plausible. Write each candidate as one statement, give the consequence of each, and ask the user to pick one.",
+  "3. Decision brief. Use this when the choice is open and the options lead to different products. Give the decision, the options, the implications of each option, your recommendation, and the reason for it. Cite a precedent if one exists.",
+  "Never ask an open question with no draft attached. Never record an answer the user did not confirm.",
+].join("\n");
+
+/** Diagnostics that need an answer from the user. */
+const ASK_CODES = new Set([
+  "PL0001 MISSING_CONTEXT",
+  "PL0101 MISSING_PRODUCT",
+  "PL0201 MISSING_BEHAVIOR",
+  "PL0301 MISSING_ARCHITECTURE",
+  "PL0401 MISSING_MECHANISM",
+]);
+
+/**
  * Written in the style it asks for, so the example is the instruction.
  */
 export const STATEMENT_STYLE =
   "Write in ASD-STE100 Simplified Technical English. Use the active voice. " +
   "Use one sentence of 25 words or fewer. Use simple words and no idiom. " +
-  "Claude Code: run a Simplified Technical English writing skill if one is installed; if none is installed, apply these rules directly.";
+  "Name who does the action. Do not use a noun as a verb.";
 
 /** Diagnostics that ask a human or an agent to write prose. */
 const STYLE_CODES = new Set([
@@ -145,9 +169,15 @@ const STYLE_CODES = new Set([
 
 export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
   const fix = diagnostic.fix ?? FIXES[diagnostic.code];
+  const ask = diagnostic.ask ?? (ASK_CODES.has(diagnostic.code) ? ASK_FORMATS : undefined);
   const style = diagnostic.style ?? (STYLE_CODES.has(diagnostic.code) ? STATEMENT_STYLE : undefined);
-  if (!fix && !style) return diagnostic;
-  return { ...diagnostic, ...(fix ? { fix } : {}), ...(style ? { style } : {}) };
+  if (!fix && !ask && !style) return diagnostic;
+  return {
+    ...diagnostic,
+    ...(fix ? { fix } : {}),
+    ...(ask ? { ask } : {}),
+    ...(style ? { style } : {}),
+  };
 }
 
 export function annotateDiagnostics(diagnostics: Diagnostic[]): Diagnostic[] {

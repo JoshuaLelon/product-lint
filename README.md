@@ -11,8 +11,8 @@ Git stores history. Product Lint validates the current graph, detects the next m
 level, synchronizes staged implementation and knowledge changes, and enforces structured
 commit trailers for semantic knowledge changes.
 
-It does not use an LLM. Its diagnostics are designed so coding agents know when to ask the
-user instead of inventing product intent.
+It does not use an LLM. Its diagnostics are designed so coding agents know when a decision
+belongs to the user, and how to put that decision to them cheaply.
 
 ## Install
 
@@ -247,9 +247,10 @@ Fields, when they apply:
 ```text
 path       the file to edit
 node       the node id involved
-question   what to ask the user, for diagnostics an agent must not answer alone
+question   what the user needs to decide
 expected   where the missing file belongs
 fix        the specific repair
+ask        how to put the question to the user, present when the fix needs their answer
 style      how to write, present when the fix asks for prose
 run        the command to run
 ```
@@ -257,17 +258,33 @@ run        the command to run
 `--json` returns the same fields.
 
 Context, Product, and Behavior state user intent, so their diagnostics carry
-`action: ask-user` and `infer: false`. An agent must ask rather than invent. Architecture
-and Mechanism follow from the code, so they carry `infer: true` and an agent may propose
-an answer.
+`action: ask-user` and `infer: false`. Architecture and Mechanism follow from the code, so
+they carry `infer: true` and an agent drafts them from the repository.
+
+### Asking well
+
+An open question is expensive to answer, and the user has often answered it already. So
+the `ask` field does not say "ask the user". It tells the agent to search the repository
+first, then to spend the user's attention in the cheapest form that fits:
+
+```text
+1. Draft to confirm    the repository already answers it; cite the source, ask to confirm
+2. Candidates to choose  two or three readings are plausible; give each consequence, ask to pick
+3. Decision brief      the options lead to different products; give the decision, the options,
+                       the implications of each, your recommendation, and your reason,
+                       and cite a precedent if one exists
+```
+
+Never ask an open question with no draft attached. Never record an answer the user did not
+confirm.
 
 ### Writing style
 
 Diagnostics that ask for prose carry a `style` field requesting
 [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/): active voice, one
-sentence, 25 words or fewer, no idiom. Statements stay easy to read, hard to misread, and
-easy to search. `product-lint llms` output carries the same rule, because an agent that
-reads a knowledge view usually goes on to edit a statement.
+sentence, 25 words or fewer, no idiom, and no noun used as a verb. Statements stay easy to
+read, hard to misread, and easy to search. `product-lint llms` output carries the same
+rule, because an agent that reads a knowledge view usually goes on to edit a statement.
 
 ## Reference JSON
 

@@ -121,6 +121,8 @@ export interface Diagnostic {
   command?: string;
   /** Specific repair for this diagnostic. Filled from the remediation table. */
   fix?: string;
+  /** How to put the question to the user, present when the fix needs their answer. */
+  ask?: string;
   /** Writing guidance, present when the fix asks for prose. */
   style?: string;
   details?: Record<string, unknown>;
