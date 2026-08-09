@@ -1,0 +1,56 @@
+import path from "node:path";
+
+export function normalizePath(value: string): string {
+  return value.replaceAll(path.sep, "/").replace(/^\.\//, "");
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+}
+
+function expandBraces(pattern: string): string[] {
+  const match = pattern.match(/\{([^{}]+)\}/);
+  if (!match || match.index === undefined) return [pattern];
+  const before = pattern.slice(0, match.index);
+  const after = pattern.slice(match.index + match[0].length);
+  return match[1]!.split(",").flatMap((part) => expandBraces(`${before}${part}${after}`));
+}
+
+export function globToRegExp(pattern: string): RegExp {
+  const normalized = normalizePath(pattern);
+  let output = "^";
+  for (let index = 0; index < normalized.length; index += 1) {
+    const current = normalized[index] ?? "";
+    const next = normalized[index + 1];
+    if (current === "*" && next === "*") {
+      const following = normalized[index + 2];
+      if (following === "/") {
+        output += "(?:.*/)?";
+        index += 2;
+      } else {
+        output += ".*";
+        index += 1;
+      }
+      continue;
+    }
+    if (current === "*") {
+      output += "[^/]*";
+      continue;
+    }
+    if (current === "?") {
+      output += "[^/]";
+      continue;
+    }
+    output += escapeRegex(current);
+  }
+  output += "$";
+  return new RegExp(output);
+}
+
+export function matchesGlob(value: string, pattern: string): boolean {
+  return expandBraces(pattern).some((item) => globToRegExp(item).test(normalizePath(value)));
+}
+
+export function matchesAny(value: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => matchesGlob(value, pattern));
+}

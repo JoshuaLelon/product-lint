@@ -1,0 +1,60 @@
+{
+  "name": "product-lint",
+  "version": "0.1.0",
+  "description": "Deterministic product-knowledge DAGs, staged synchronization, and commit guardrails.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "product-lint": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./schema/*": "./schema/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "schema",
+    "templates",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build": "npm run clean && tsc -p tsconfig.build.json && node scripts/postbuild.mjs",
+    "test": "node --test test/*.test.mjs",
+    "verify": "npm run build && npm test",
+    "prepack": "npm run verify"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^6.0.3"
+  },
+  "keywords": [
+    "product",
+    "lint",
+    "knowledge-graph",
+    "git-hooks",
+    "commit-policy",
+    "architecture",
+    "llm",
+    "agent"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JoshuaLelon/product-lint.git"
+  },
+  "homepage": "https://github.com/JoshuaLelon/product-lint#readme",
+  "bugs": {
+    "url": "https://github.com/JoshuaLelon/product-lint/issues"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JoshuaLelon/product-lint/schema/reference-node.schema.json",
+  "title": "Product Lint reference node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "kind", "statement"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^reference\\.[a-z0-9][a-z0-9._-]*$"
+    },
+    "kind": { "type": "string", "minLength": 1 },
+    "statement": { "type": "string", "minLength": 1 },
+    "relatedNodes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "files"],
+      "properties": {
+        "commit": { "type": "string" },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path"],
+            "properties": {
+              "path": { "type": "string" },
+              "lines": {
+                "type": "array",
+                "prefixItems": [
+                  { "type": "integer", "minimum": 1 },
+                  { "type": "integer", "minimum": 1 }
+                ],
+                "minItems": 2,
+                "maxItems": 2
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

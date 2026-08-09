@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JoshuaLelon/product-lint/schema/canonical-node.schema.json",
+  "title": "Product Lint canonical knowledge node",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "level", "kind", "statement", "constrainedBy"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^(context|product|behavior|architecture|mechanism)\\.[a-z0-9][a-z0-9._-]*$"
+    },
+    "level": {
+      "enum": ["context", "product", "behavior", "architecture", "mechanism"]
+    },
+    "kind": { "type": "string", "minLength": 1 },
+    "statement": { "type": "string", "minLength": 1 },
+    "constrainedBy": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["constraintsDigest"],
+      "properties": {
+        "constraintsDigest": { "type": "string" }
+      }
+    },
+    "implementation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["files", "digest"],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "digest": { "type": "string" }
+      }
+    }
+  }
+}

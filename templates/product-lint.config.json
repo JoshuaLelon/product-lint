@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/product-lint/schema/config.schema.json",
+  "schemaVersion": 1,
+  "root": ".",
+  "knowledgeRoot": "docs",
+  "governedPaths": {
+    "include": [
+      "src/**",
+      "test/**",
+      "tests/**",
+      "scripts/**"
+    ],
+    "exclude": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      ".git/**",
+      "docs/**"
+    ]
+  },
+  "commit": {
+    "trailer": "Knowledge-Change",
+    "requireBody": true
+  }
+}
