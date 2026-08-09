@@ -4,7 +4,7 @@
   "title": "Product Lint canonical knowledge node",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "level", "kind", "statement", "constrainedBy"],
+  "required": ["id", "level", "statement", "constrainedBy"],
   "properties": {
     "$schema": { "type": "string" },
     "schemaVersion": { "const": 1 },
@@ -15,7 +15,6 @@
     "level": {
       "enum": ["context", "product", "behavior", "architecture", "mechanism"]
     },
-    "kind": { "type": "string", "minLength": 1 },
     "statement": { "type": "string", "minLength": 1 },
     "constrainedBy": {
       "type": "array",

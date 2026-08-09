@@ -34,7 +34,6 @@ test("rejects cycles", () => {
   nodes.push({
     id: "context.second",
     level: "context",
-    kind: "problem",
     statement: "A second problem.",
     constrainedBy: ["context.review-problem"],
     sync: { constraintsDigest: "pending" },

@@ -17,10 +17,15 @@ user instead of inventing product intent.
 ## Install
 
 ```bash
-npm install --save-dev product-lint
+npm install --save-dev product-lint lefthook
 npx product-lint init
 npx product-lint check
 ```
+
+`init` writes `product-lint.config.json`, creates `docs/` with a `.gitkeep` per level,
+adds Product Lint's `pre-commit` and `commit-msg` commands to your Lefthook config
+(creating it, or appending to an existing one), and installs the Git hooks. Running it
+twice is safe.
 
 `product-lint check` exits with:
 
@@ -53,7 +58,6 @@ Each canonical JSON file is one node:
   "schemaVersion": 1,
   "id": "behavior.approve-version",
   "level": "behavior",
-  "kind": "workflow",
   "statement": "A reviewer can approve the current version of a shot.",
   "constrainedBy": [
     "product.current-version",
@@ -71,7 +75,6 @@ Mechanism nodes alone bind knowledge to implementation:
 {
   "id": "mechanism.approval-command",
   "level": "mechanism",
-  "kind": "implementation",
   "statement": "Approval commands are implemented in the application layer.",
   "constrainedBy": ["architecture.approval-ownership"],
   "sync": {
@@ -134,7 +137,7 @@ Product Lint traverses the source JSON on demand. It does not persist a generate
 
 ## Staged synchronization
 
-Before committing implementation changes:
+With the hooks installed this happens automatically on commit. To run it by hand:
 
 ```bash
 git add src/ test/
@@ -156,10 +159,12 @@ Git index.
 
 ## Commit convention
 
-Semantic knowledge changes use exact Git trailers:
+Product Lint governs only the trailers and the body. **The subject line is yours.** It is
+never parsed or constrained, so it composes with whatever convention your team already
+uses:
 
 ```text
-feat(review): constrain approval to the current version
+PROJ-4471 constrain approval to the current version
 
 Approval must refer to the version the reviewer actually evaluated.
 
@@ -167,9 +172,24 @@ Knowledge-Change: product.current-version
 Knowledge-Change: behavior.approve-version
 ```
 
+Conventional Commits, a bare sentence, a ticket key, a release tag — all equally valid.
+
 The trailer set must exactly match semantic canonical-node changes in the staged diff.
 Synchronization-only changes do not receive trailers. A knowledge-changing commit also
 requires a non-empty explanatory body.
+
+If your team wants its own subject convention *enforced*, opt in with a regular
+expression. It is unset by default:
+
+```json
+{
+  "commit": {
+    "subjectPattern": "^[A-Z]+-[0-9]+ "
+  }
+}
+```
+
+Non-matching subjects then fail with `PL2205 SUBJECT_PATTERN_MISMATCH`.
 
 Validate a commit-message file:
 
@@ -179,12 +199,15 @@ npx product-lint commit message .git/COMMIT_EDITMSG
 
 ## Hooks
 
-Example Lefthook configuration:
+`product-lint init` installs this Lefthook configuration for you:
 
 ```yaml
 pre-commit:
+  piped: true
   commands:
-    product-lint:
+    1_product-lint-sync:
+      run: npx product-lint knowledge sync --staged && git add docs/
+    2_product-lint-check:
       run: npx product-lint commit check --staged
 
 commit-msg:
@@ -192,6 +215,10 @@ commit-msg:
     product-lint:
       run: npx product-lint commit message {1}
 ```
+
+The sync command runs first and re-stages the digests it rewrites, so `git commit` works
+without the manual sync-and-restage step. `piped: true` stops the check from running when
+sync fails.
 
 The pre-commit check allows an incomplete frontier so knowledge can be built incrementally.
 Use the shipping check for terminal completeness:

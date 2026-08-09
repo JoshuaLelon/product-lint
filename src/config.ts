@@ -16,7 +16,17 @@ async function readJsonFile<T>(file: string): Promise<T> {
 
 export async function loadConfig(cwd = process.cwd(), explicit?: string): Promise<ResolvedConfig> {
   const configPath = path.resolve(cwd, explicit ?? DEFAULT_CONFIG_NAME);
-  const input = await readJsonFile<ProductLintConfig>(configPath);
+  let input: ProductLintConfig;
+  try {
+    input = await readJsonFile<ProductLintConfig>(configPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error(
+        `No Product Lint configuration at ${configPath}.\nRun: npx product-lint init`,
+      );
+    }
+    throw error;
+  }
   const root = path.resolve(path.dirname(configPath), input.root ?? ".");
   const knowledgeRoot = path.resolve(root, input.knowledgeRoot ?? "docs");
   const canonicalRoots = Object.fromEntries(
@@ -42,6 +52,7 @@ export async function loadConfig(cwd = process.cwd(), explicit?: string): Promis
     commit: {
       trailer: input.commit?.trailer ?? "Knowledge-Change",
       requireBody: input.commit?.requireBody ?? true,
+      ...(input.commit?.subjectPattern ? { subjectPattern: input.commit.subjectPattern } : {}),
     },
   };
 }

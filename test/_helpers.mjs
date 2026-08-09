@@ -33,7 +33,6 @@ export function canonicalNodes() {
     {
       id: "context.review-problem",
       level: "context",
-      kind: "problem",
       statement: "Video teams lose track of review state.",
       constrainedBy: [],
       sync: { constraintsDigest: "pending" },
@@ -41,7 +40,6 @@ export function canonicalNodes() {
     {
       id: "product.current-version",
       level: "product",
-      kind: "invariant",
       statement: "Each shot has one current version.",
       constrainedBy: ["context.review-problem"],
       sync: { constraintsDigest: "pending" },
@@ -49,7 +47,6 @@ export function canonicalNodes() {
     {
       id: "behavior.approve-version",
       level: "behavior",
-      kind: "workflow",
       statement: "A reviewer can approve the current version.",
       constrainedBy: ["product.current-version"],
       sync: { constraintsDigest: "pending" },
@@ -57,7 +54,6 @@ export function canonicalNodes() {
     {
       id: "architecture.approval-owner",
       level: "architecture",
-      kind: "ownership",
       statement: "The application layer owns approval transitions.",
       constrainedBy: ["behavior.approve-version"],
       sync: { constraintsDigest: "pending" },
@@ -65,7 +61,6 @@ export function canonicalNodes() {
     {
       id: "mechanism.approval-command",
       level: "mechanism",
-      kind: "implementation",
       statement: "Approval is implemented by an application command.",
       constrainedBy: ["architecture.approval-owner"],
       sync: { constraintsDigest: "pending" },

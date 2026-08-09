@@ -230,6 +230,7 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
 
 function parseCommitMessage(text: string, trailer: string): {
   declared: Set<string>;
+  subject: string;
   body: string;
   duplicates: string[];
 } {
@@ -259,7 +260,8 @@ function parseCommitMessage(text: string, trailer: string): {
     )
     .join("\n")
     .trim();
-  return { declared, body, duplicates };
+  const subject = firstNonEmpty >= 0 ? lines[firstNonEmpty]!.trim() : "";
+  return { declared, subject, body, duplicates };
 }
 
 export async function checkCommitMessage(
@@ -297,6 +299,28 @@ export async function checkCommitMessage(
         severity: "error",
         message: `${config.commit.trailer} declares ${id}, but it has no semantic staged change.`,
         nodeId: id,
+      });
+    }
+  }
+  if (config.commit.subjectPattern) {
+    let pattern: RegExp | undefined;
+    try {
+      pattern = new RegExp(config.commit.subjectPattern);
+    } catch (error) {
+      diagnostics.push({
+        code: "PL2206 INVALID_SUBJECT_PATTERN",
+        severity: "error",
+        message: `commit.subjectPattern is not a valid regular expression: ${String(error)}`,
+        path: config.configPath,
+      });
+    }
+    if (pattern && !pattern.test(parsed.subject)) {
+      diagnostics.push({
+        code: "PL2205 SUBJECT_PATTERN_MISMATCH",
+        severity: "error",
+        message: `Commit subject does not match the configured convention ${config.commit.subjectPattern}.`,
+        action: "edit-node",
+        details: { subject: parsed.subject, subjectPattern: config.commit.subjectPattern },
       });
     }
   }

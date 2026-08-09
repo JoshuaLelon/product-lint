@@ -21,7 +21,6 @@ const CANONICAL_KEYS = new Set([
   "schemaVersion",
   "id",
   "level",
-  "kind",
   "statement",
   "constrainedBy",
   "sync",
@@ -64,7 +63,6 @@ function parseCanonicalNode(
 
   const id = typeof value.id === "string" ? value.id.trim() : "";
   const level = typeof value.level === "string" ? value.level : "";
-  const kind = typeof value.kind === "string" ? value.kind.trim() : "";
   const statement = typeof value.statement === "string" ? value.statement.trim() : "";
   const constrainedBy = Array.isArray(value.constrainedBy)
     ? value.constrainedBy.filter((item): item is string => typeof item === "string")
@@ -115,15 +113,6 @@ function parseCanonicalNode(
     });
   }
 
-  if (!kind) {
-    diagnostics.push({
-      code: "PL1008 MISSING_KIND",
-      severity: "error",
-      message: "Canonical node is missing a non-empty kind.",
-      path: sourcePath,
-      nodeId: id || undefined,
-    });
-  }
   if (!statement) {
     diagnostics.push({
       code: "PL1009 MISSING_STATEMENT",
@@ -207,7 +196,6 @@ function parseCanonicalNode(
       ...(value.schemaVersion === 1 ? { schemaVersion: 1 as const } : {}),
       id,
       level: level as KnowledgeLevel,
-      kind,
       statement,
       constrainedBy,
       ...(sync ? { sync } : {}),
@@ -367,7 +355,6 @@ export function semanticProjection(node: CanonicalNode): Record<string, unknown>
   return {
     id: node.id,
     level: node.level,
-    kind: node.kind,
     statement: node.statement,
     constrainedBy: [...node.constrainedBy],
     ...(node.implementation ? { implementation: { files: [...node.implementation.files] } } : {}),
@@ -397,7 +384,6 @@ export function serializeNode(node: SourceCanonicalNode): string {
     schemaVersion: 1,
     id: node.id,
     level: node.level,
-    kind: node.kind,
     statement: node.statement,
     constrainedBy: [...node.constrainedBy],
     ...(node.sync ? { sync: node.sync } : {}),

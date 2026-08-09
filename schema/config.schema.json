@@ -22,7 +22,12 @@
       "additionalProperties": false,
       "properties": {
         "trailer": { "type": "string", "minLength": 1 },
-        "requireBody": { "type": "boolean" }
+        "requireBody": { "type": "boolean" },
+        "subjectPattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional regular expression the commit subject must match. Omit to leave the subject unconstrained."
+        }
       }
     }
   }

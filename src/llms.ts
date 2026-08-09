@@ -4,7 +4,6 @@ function renderNode(node: SourceCanonicalNode): string {
   const lines = [
     `## ${node.id}`,
     `level: ${node.level}`,
-    `kind: ${node.kind}`,
     `statement: ${node.statement}`,
   ];
   if (node.constrainedBy.length > 0) lines.push(`constrainedBy: ${node.constrainedBy.join(", ")}`);

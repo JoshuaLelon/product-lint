@@ -28,6 +28,34 @@ test("commit trailers exactly match semantic node changes", async () => {
   assert.deepEqual(result.diagnostics, []);
 });
 
+test("commit subject is unconstrained by default", async () => {
+  const { root, config } = await createRepository();
+  await stageProductChange(root, config);
+  const message = path.join(root, "message.txt");
+  await writeFile(
+    message,
+    `PROJ-4471 [release/2.1] clarify the current version !!!\n\nThe review model needs one unambiguous selected version.\n\nKnowledge-Change: product.current-version\n`,
+  );
+  const result = await checkCommitMessage(config, message);
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("commit.subjectPattern enforces an opt-in subject convention", async () => {
+  const { root, config } = await createRepository();
+  await stageProductChange(root, config);
+  const message = path.join(root, "message.txt");
+  const scoped = { ...config, commit: { ...config.commit, subjectPattern: "^[A-Z]+-[0-9]+ " } };
+  const body = `\n\nThe review model needs one unambiguous selected version.\n\nKnowledge-Change: product.current-version\n`;
+
+  await writeFile(message, `clarify the current version${body}`);
+  let result = await checkCommitMessage(scoped, message);
+  assert.ok(result.diagnostics.some((item) => item.code === "PL2205 SUBJECT_PATTERN_MISMATCH"));
+
+  await writeFile(message, `PROJ-4471 clarify the current version${body}`);
+  result = await checkCommitMessage(scoped, message);
+  assert.deepEqual(result.diagnostics, []);
+});
+
 test("commit validation rejects missing, spurious, and unexplained trailers", async () => {
   const { root, config } = await createRepository();
   await stageProductChange(root, config);

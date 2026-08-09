@@ -22,7 +22,6 @@ export interface CanonicalNode {
   schemaVersion?: 1;
   id: string;
   level: KnowledgeLevel;
-  kind: string;
   statement: string;
   constrainedBy: string[];
   sync?: NodeSyncState;
@@ -55,6 +54,12 @@ export interface GovernedPathConfig {
 export interface CommitConventionConfig {
   trailer?: string;
   requireBody?: boolean;
+  /**
+   * Optional JavaScript regular expression the commit subject must match.
+   * Unset means the subject is unconstrained, which is the default: teams own
+   * their own convention (Conventional Commits, Jira keys, anything else).
+   */
+  subjectPattern?: string;
 }
 
 export interface ProductLintConfig {
@@ -79,6 +84,7 @@ export interface ResolvedConfig {
   commit: {
     trailer: string;
     requireBody: boolean;
+    subjectPattern?: string;
   };
 }
 

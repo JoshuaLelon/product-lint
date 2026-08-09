@@ -84,6 +84,8 @@ async function main(): Promise<void> {
     else {
       for (const file of result.created) console.log(`created ${file}`);
       for (const file of result.skipped) console.log(`skipped ${file}`);
+      if (result.notes.length > 0) console.log("");
+      for (const note of result.notes) console.log(note);
       console.log("\nRun: product-lint check");
     }
     return;
@@ -185,7 +187,7 @@ async function main(): Promise<void> {
   if (command === "commit") {
     const [action, subject, ...tail] = rest;
     if (action === "check") {
-      const parsed = parseCommon([subject, ...tail].filter(Boolean));
+      const parsed = parseCommon([subject, ...tail].filter((item) => item !== undefined));
       if (!parsed.values.staged && subject !== "--staged") {
         throw new Error("commit check requires --staged.");
       }
@@ -213,6 +215,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  if (!(error instanceof Error)) console.error(String(error));
+  else if (process.env.PRODUCT_LINT_DEBUG) console.error(error.stack ?? error.message);
+  else console.error(error.message);
   process.exitCode = 1;
 });
