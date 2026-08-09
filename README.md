@@ -229,6 +229,46 @@ npx product-lint ship
 
 `ship` also requires a clean working tree.
 
+## Diagnostics
+
+Every diagnostic names the problem and the repair. An agent does not have to infer the
+repair from the message:
+
+```text
+PL2202 MISSING_KNOWLEDGE_TRAILER Semantic node change is missing Knowledge-Change: product.current-version
+  node: product.current-version
+  fix: Add a trailer line for this node at the end of the commit message, in the form
+       Knowledge-Change: <node-id>. Put one id per line, and leave a blank line before the
+       first trailer.
+```
+
+Fields, when they apply:
+
+```text
+path       the file to edit
+node       the node id involved
+question   what to ask the user, for diagnostics an agent must not answer alone
+expected   where the missing file belongs
+fix        the specific repair
+style      how to write, present when the fix asks for prose
+run        the command to run
+```
+
+`--json` returns the same fields.
+
+Context, Product, and Behavior state user intent, so their diagnostics carry
+`action: ask-user` and `infer: false`. An agent must ask rather than invent. Architecture
+and Mechanism follow from the code, so they carry `infer: true` and an agent may propose
+an answer.
+
+### Writing style
+
+Diagnostics that ask for prose carry a `style` field requesting
+[ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/): active voice, one
+sentence, 25 words or fewer, no idiom. Statements stay easy to read, hard to misread, and
+easy to search. `product-lint llms` output carries the same rule, because an agent that
+reads a knowledge view usually goes on to edit a statement.
+
 ## Reference JSON
 
 `docs/reference/*.json` stores non-canonical institutional memory. References do not

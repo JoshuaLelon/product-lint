@@ -3,6 +3,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { loadConfig } from "./config.js";
 import { formatDiagnostics, hasErrors } from "./diagnostics.js";
+import { annotateDiagnostics } from "./remediation.js";
 import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { inspectWorkingTree } from "./status.js";
@@ -97,7 +98,7 @@ async function main(): Promise<void> {
     if (command === "validate") {
       const snapshot = await createSnapshot(config, "working");
       const result = await validateSnapshot(config, snapshot);
-      if (parsed.values.json) console.log(stringifyJson(result.diagnostics));
+      if (parsed.values.json) console.log(stringifyJson(annotateDiagnostics(result.diagnostics)));
       else process.stdout.write(formatDiagnostics(result.diagnostics));
       if (hasErrors(result.diagnostics)) process.exitCode = 1;
       return;
@@ -122,7 +123,7 @@ async function main(): Promise<void> {
       console.log(
         stringifyJson({
           complete: status.frontier.complete && !dirty,
-          diagnostics: all,
+          diagnostics: annotateDiagnostics(all),
           ...(command === "ship" ? { dirty } : {}),
         }),
       );
@@ -144,8 +145,9 @@ async function main(): Promise<void> {
       }
       const config = await loadConfig(process.cwd(), parsed.values.config);
       const result = await synchronizeStaged(config);
-      if (parsed.values.json) console.log(stringifyJson(result));
-      else {
+      if (parsed.values.json) {
+        console.log(stringifyJson({ ...result, diagnostics: annotateDiagnostics(result.diagnostics) }));
+      } else {
         for (const file of result.updatedFiles) console.log(`updated ${file}`);
         process.stdout.write(formatDiagnostics(result.diagnostics));
         if (result.updatedFiles.length > 0) console.log("Stage the updated JSON files before committing.");
@@ -193,8 +195,9 @@ async function main(): Promise<void> {
       }
       const config = await loadConfig(process.cwd(), parsed.values.config);
       const result = await checkStagedCommit(config);
-      if (parsed.values.json) console.log(stringifyJson(result));
-      else process.stdout.write(formatDiagnostics(result.diagnostics));
+      if (parsed.values.json) {
+        console.log(stringifyJson({ ...result, diagnostics: annotateDiagnostics(result.diagnostics) }));
+      } else process.stdout.write(formatDiagnostics(result.diagnostics));
       if (hasErrors(result.diagnostics)) process.exitCode = 1;
       return;
     }
@@ -203,8 +206,9 @@ async function main(): Promise<void> {
       const parsed = parseCommon(tail);
       const config = await loadConfig(process.cwd(), parsed.values.config);
       const result = await checkCommitMessage(config, path.resolve(subject));
-      if (parsed.values.json) console.log(stringifyJson(result));
-      else process.stdout.write(formatDiagnostics(result.diagnostics));
+      if (parsed.values.json) {
+        console.log(stringifyJson({ ...result, diagnostics: annotateDiagnostics(result.diagnostics) }));
+      } else process.stdout.write(formatDiagnostics(result.diagnostics));
       if (hasErrors(result.diagnostics)) process.exitCode = 1;
       return;
     }

@@ -119,6 +119,10 @@ export interface Diagnostic {
   question?: string;
   expectedPath?: string;
   command?: string;
+  /** Specific repair for this diagnostic. Filled from the remediation table. */
+  fix?: string;
+  /** Writing guidance, present when the fix asks for prose. */
+  style?: string;
   details?: Record<string, unknown>;
 }
 

@@ -9,4 +9,6 @@ export { inspectWorkingTree } from "./status.js";
 export { renderFileKnowledgeForLlm, renderAffectedKnowledgeForLlm } from "./llms.js";
 export { createSnapshot } from "./repository.js";
 export { initProject } from "./init.js";
+export { formatDiagnostic, formatDiagnostics, hasErrors } from "./diagnostics.js";
+export { annotateDiagnostic, annotateDiagnostics, STATEMENT_STYLE } from "./remediation.js";
 export type * from "./types.js";

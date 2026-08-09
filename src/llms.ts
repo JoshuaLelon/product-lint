@@ -1,4 +1,13 @@
 import type { AffectedKnowledgeResult, FileKnowledgeResult, SourceCanonicalNode } from "./types.js";
+import { STATEMENT_STYLE } from "./remediation.js";
+
+/**
+ * An agent that reads this view usually goes on to change the file, which then
+ * requires a new or edited statement. The style rule travels with the context.
+ */
+function styleFooter(): string[] {
+  return ["# If you write or edit a statement", STATEMENT_STYLE, ""];
+}
 
 function renderNode(node: SourceCanonicalNode): string {
   const lines = [
@@ -19,6 +28,7 @@ export function renderFileKnowledgeForLlm(result: FileKnowledgeResult): string {
       lines.push(`## ${reference.id}`, `kind: ${reference.kind}`, `statement: ${reference.statement}`, "");
     }
   }
+  lines.push(...styleFooter());
   return `${lines.join("\n").trim()}\n`;
 }
 
@@ -37,5 +47,6 @@ export function renderAffectedKnowledgeForLlm(result: AffectedKnowledgeResult): 
       lines.push(`## ${reference.id}`, `kind: ${reference.kind}`, `statement: ${reference.statement}`, "");
     }
   }
+  lines.push(...styleFooter());
   return `${lines.join("\n").trim()}\n`;
 }
