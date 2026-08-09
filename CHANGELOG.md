@@ -1,41 +1,38 @@
 # Changelog
 
-## Unreleased
-
-- Every diagnostic now carries a specific `fix`. Previously 10 of 47 codes offered any
-  remediation and 37 gave a message only, so an agent had to infer the repair. A test
-  fails if a new code ships without a fix.
-- Diagnostics that need an answer from the user now carry an `ask` field with three
-  formats: draft to confirm, candidates to choose, and decision brief. Each costs the user
-  a confirmation or a choice rather than an essay. The earlier instruction, "ask the user,
-  do not invent the answer", assumed the user wanted to answer every question from scratch.
-- Diagnostics that ask for prose now carry a `style` field requesting ASD-STE100
-  Simplified Technical English. `product-lint llms` output carries the same rule.
-- Removed `kind` from canonical nodes. `level` already carries the structural
-  classification, and no rule ever branched on `kind`. Reference nodes keep their `kind`,
-  which is their only classifier.
-- `product-lint init` now provisions the whole setup: `docs/` with a `.gitkeep` per level,
-  Lefthook `pre-commit` and `commit-msg` commands (created or appended to an existing
-  config), and `lefthook install`.
-- The pre-commit hook now runs `knowledge sync --staged` and re-stages `docs/`, removing
-  the manual sync-and-restage step.
-- Documented that the commit subject is unconstrained, and added the opt-in
-  `commit.subjectPattern` for teams enforcing their own convention (`PL2205`, `PL2206`).
-- Fixed a type error in `src/cli.ts` that made `tsc` exit non-zero and blocked
-  `npm pack` and `npm publish` via `prepack`.
-- A missing configuration file now reports `Run: npx product-lint init` instead of a raw
-  `ENOENT` stack trace. Set `PRODUCT_LINT_DEBUG` for full stacks.
-
 ## 0.1.0
 
-Initial package scaffold.
+First public release.
+
+Knowledge model:
 
 - Five-level JSON knowledge DAG: Context, Product, Behavior, Architecture, Mechanism.
 - Continuous top-down lineage and frontier diagnostics.
 - File-to-knowledge and node-to-affected-files traversal.
 - Mechanism ownership of implementation paths.
 - Deterministic staged implementation and constraint digests.
-- Bidirectional staged commit validation.
-- Exact `Knowledge-Change` Git trailer enforcement.
 - Git-anchored reference JSON validation.
 - Query-scoped LLM text views.
+
+Commits and hooks:
+
+- Bidirectional staged commit validation.
+- Exact `Knowledge-Change` Git trailer enforcement.
+- The commit subject is unconstrained, so any team convention composes with it. Opt in to
+  enforcing your own with `commit.subjectPattern` (`PL2205`, `PL2206`).
+- `product-lint init` provisions the whole setup: `docs/` with a `.gitkeep` per level,
+  Lefthook `pre-commit` and `commit-msg` commands (created, or appended to an existing
+  config), and `lefthook install`.
+- The pre-commit hook runs `knowledge sync --staged` and re-stages `docs/`, so no manual
+  sync-and-restage step is needed.
+
+Diagnostics:
+
+- Every diagnostic carries a specific `fix`. A test fails if a new code ships without one.
+- Diagnostics that need an answer from the user carry an `ask` field with three formats:
+  draft to confirm, candidates to choose, and decision brief. Each costs the user a
+  confirmation or a choice rather than an essay.
+- Diagnostics that ask for prose carry a `style` field requesting ASD-STE100 Simplified
+  Technical English. `product-lint llms` output carries the same rule.
+- A missing configuration file reports `Run: npx product-lint init` rather than a raw
+  `ENOENT` stack trace. Set `PRODUCT_LINT_DEBUG` for full stacks.
