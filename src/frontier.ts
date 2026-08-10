@@ -7,6 +7,7 @@ import type {
   ResolvedConfig,
 } from "./types.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
+import { audienceOverlaps, audienceSets, resolveAudiences } from "./audience.js";
 import { matchesAny } from "./glob.js";
 
 export function governedFiles(config: ResolvedConfig, snapshot: RepositorySnapshot): string[] {
@@ -42,8 +43,17 @@ export const LEVEL_AUTHORITY: Record<
   KnowledgeLevel,
   { question: string; action: "ask-user" | "edit-node"; infer: boolean }
 > = {
+  audience: {
+    question:
+      "Who is this product for? Name the sets that distinguish them, and the values in each set.",
+    action: "ask-user",
+    infer: false,
+  },
+  // Context used to ask who AND why in one question, which is two claims that
+  // can be false independently — the same fault the one-thing rule forbids in a
+  // statement. Who now has its own level, and Context asks only why.
   context: {
-    question: "Who is this product for, and what problem are they trying to solve?",
+    question: "What problem is this audience trying to solve?",
     action: "ask-user",
     infer: false,
   },
@@ -119,6 +129,7 @@ function missingChildDiagnostic(
   const definitions = LEVEL_AUTHORITY;
   const definition = definitions[requiredLevel];
   const codeByLevel: Record<KnowledgeLevel, string> = {
+    audience: "PL0011 MISSING_AUDIENCE",
     context: "PL0001 MISSING_CONTEXT",
     product: "PL0101 MISSING_PRODUCT",
     behavior: "PL0201 MISSING_BEHAVIOR",
@@ -156,24 +167,25 @@ export function detectFrontier(
   snapshot: RepositorySnapshot,
 ): FrontierResult {
   const diagnostics: Diagnostic[] = [];
-  const contextNodes = [...graph.nodes.values()].filter((node) => node.level === "context");
+  const rootLevel = KNOWLEDGE_LEVELS[0];
+  const contextNodes = [...graph.nodes.values()].filter((node) => node.level === rootLevel);
   if (contextNodes.length === 0) {
     diagnostics.push({
-      code: "PL0001 MISSING_CONTEXT",
+      code: "PL0011 MISSING_AUDIENCE",
       severity: "info",
-      message: "No canonical Context nodes exist.",
-      requiredLevel: "context",
+      message: `No canonical ${rootLevel} nodes exist.`,
+      requiredLevel: rootLevel,
       action: "ask-user",
       infer: false,
-      question: "Who is this product for, and what problem are they trying to solve?",
-      expectedPath: "docs/context/*.json",
+      question: LEVEL_AUTHORITY[rootLevel].question,
+      expectedPath: `docs/${rootLevel}/*.json`,
       command: "git add docs && product-lint knowledge sync --staged",
       details: {
         nodeTemplate: {
           schemaVersion: 1,
-          id: "context.<semantic-id>",
-          level: "context",
-          statement: "<user-supplied context statement>",
+          id: `${rootLevel}.<set>.<value>`,
+          level: rootLevel,
+          statement: `<user-supplied ${rootLevel} statement>`,
           constrainedBy: [],
           sync: { constraintsDigest: "pending" },
         },
@@ -188,15 +200,31 @@ export function detectFrontier(
     return { complete: false, diagnostics };
   }
 
+  // An audience value is covered when some Context's SELECTOR reaches it, which
+  // is not the same as having a child edge: a Context that names `role.*` leaves
+  // no edge to any single role, and a Context that names one set leaves none to
+  // the other set's values at all. Reading edges here reported every value the
+  // graph covers by description rather than by name as uncovered.
+  const audiences = resolveAudiences(graph);
+  const axes = [...audienceSets(graph).keys()].sort();
+  const contextAudiences = [...graph.nodes.values()]
+    .filter((node) => node.level === "context")
+    .map((node) => audiences.get(node.id) ?? []);
+
   for (let index = 0; index < KNOWLEDGE_LEVELS.length - 1; index += 1) {
     const level = KNOWLEDGE_LEVELS[index]!;
     const nextLevel = KNOWLEDGE_LEVELS[index + 1]!;
     for (const node of graph.nodes.values()) {
       if (node.level !== level) continue;
-      const hasNextLevelChild = [...(graph.children.get(node.id) ?? [])].some(
-        (childId) => graph.nodes.get(childId)?.level === nextLevel,
-      );
-      if (!hasNextLevelChild) diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph));
+      const covered =
+        level === "audience"
+          ? contextAudiences.some((context) =>
+              audienceOverlaps(context, audiences.get(node.id) ?? [], axes),
+            )
+          : [...(graph.children.get(node.id) ?? [])].some(
+              (childId) => graph.nodes.get(childId)?.level === nextLevel,
+            );
+      if (!covered) diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph));
     }
   }
 

@@ -1,5 +1,96 @@
 # Changelog
 
+## 0.10.0
+
+Audience becomes a level, structured as n sets rather than one.
+
+- New root level `audience`, above Context. The graph is now
+  `Audience -> Context -> Product -> Behavior -> Architecture -> Mechanism`. Context used to
+  ask "who is this for, AND what problem are they solving", which is two claims that can be
+  false independently — the same fault the one-thing rule forbids inside a statement. Context
+  now asks only why.
+- The level is **n MECE sets**, not one set of nodes: `audience.<set>.<value>`. A Context names
+  a selector over them, OR within a set and AND across sets, so `[role.admin,
+  segment.enterprise]` is enterprise admins and only them. Modelling the axes as independent
+  parents cannot express that — a list of parents is a union, so an SMB admin and an enterprise
+  member would both reach it. Modelling audiences as flat tuples can, but needs one node per
+  combination and one parent per covered combination; at three axes that is 18 nodes and up to
+  18 parents on a single Context, against 8 and 2 here.
+- `audience.<set>.*` names a set rather than its members, and carries the set's **membership**
+  as its fingerprint. Listing every value instead means the same thing today and a different
+  thing tomorrow: nothing a node named changes when a value is created beside them, so the
+  digest holds, `check` stays green, and the node stops covering everyone while still claiming
+  to. Measured on a real repository before the wildcard existed — the digest was byte-identical
+  across the set growing, and the only diagnostic was about the new value, which went away as
+  soon as anyone modelled it.
+- New `product-lint knowledge slice <set=value,...>`. The mock set is the complement of the keep
+  closure, never the closure of a mock root. They differ whenever a node has more than one
+  parent: on the graph this was designed against, growing the mock set downward from "everyone
+  else" stubbed 2 of the 3 files the kept audience needed. `contested` reports that difference
+  rather than resolving it silently.
+- New `PL2107 AUDIENCE_WIDENED`, a warning. Audience below Context is the union of a node's
+  parents, so adding a parent can only widen, and it does so without changing a word of the
+  node. That is the mirror of the reason wildcards exist — in both cases the meaning moves
+  while the statement stands still — except this one is decidable from the two graphs, so it
+  is reported rather than instructed.
+- The frontier now decides audience coverage by selector, not by child edge. A wildcard leaves
+  no edge to any single value, and a Context naming one set leaves none to the other set's
+  values at all, so reading edges called every value covered by description uncovered. Caught
+  end-to-end, not in review: a correct four-value graph reported two of them missing.
+- `src/graph.ts` and `src/commit.ts` no longer hardcode `context` as the parentless root or
+  re-spell the level list. `KNOWLEDGE_LEVELS` was not the single source of truth it read as,
+  and both would have silently governed the wrong level.
+- `for-file` and `affected-by` now print the **resolved** audience. The lineage lists the
+  audience nodes it passed through, and a wildcard is not a node, so a file reached through one
+  showed whatever other audience parent it happened to have and read as scoped to it. On the
+  README's own graph `src/approval/approve-version.ts` listed `role.admin` and `segment.studio`
+  while actually serving everyone.
+- An audience prints as `role=admin, segment=studio`, naming only the sets that constrain it,
+  and `everyone` when none do. Terms another term already covers are absorbed, in the resolver
+  rather than at the end — a redundant term would otherwise be copied into every node below it,
+  growing the disjunction down the graph while describing the same people.
+- `PL0011` carries its own `shape` rule. The general one tells an agent to keep the level a
+  single non-overlapping set, which here produces one node per combination — the shape sets
+  exist to avoid — and its repair for a duplicate is "add your parent to its constrainedBy
+  instead", which cannot apply to a node with no parents.
+- `PL1005`, `PL1010`, and `PL1103` named the five old levels in their repair text. `PL1010`
+  told an author that a Context node uses an empty `constrainedBy`, which is now wrong twice
+  over.
+- The README is rewritten around one graph. It previously described three different products —
+  video review, an orders service, and the SSO example — so no query example could be read
+  against the graph the example before it established. Every command output in it is now real
+  output from the single graph in "The example used throughout".
+- New `src/audience.ts` and `test/audience.test.mjs`. Audience is held in disjunctive normal
+  form: sets are closed under intersection and not under union, and inheritance below Context
+  is a union, so a node carries a list of terms bounded by its distinct Context ancestors —
+  never by the size of the product of the sets. A 630-node graph over a 15,625-tuple space
+  resolves in 31ms and answers a slice in 1ms, because the tuple space is never constructed.
+
+## 0.9.0
+
+`init` now checks what it provisioned, instead of telling you to.
+
+- After provisioning, `init` runs the working-tree read behind `check` and exits with its
+  result. It used to end on `Run: npx product-lint check`, which spent the one moment the tool
+  has the user's attention on an instruction rather than an answer. The adoption install is the
+  case that makes this matter: `init` creates six empty level folders beside a `docs/` tree that
+  may already hold nodes, and nothing had read them.
+- `init --json` gains a `check` object beside `created`/`skipped`/`notes`, carrying `complete`
+  and the annotated diagnostics — the same shape `check --json` returns.
+- `init` therefore exits 2 on an empty repository, where it used to exit 0. That is the honest
+  answer, and it is the answer `PL0001 MISSING_CONTEXT` was written to give: a fresh repository
+  is incomplete, and saying so is the whole reason that diagnostic exists rather than a "you are
+  set up" line. A script running `init` under `set -e` stops there now, so the text output names
+  the boundary — `provisioning done. checking the working tree:` — because an unlabelled
+  diagnostic printed under a list of created paths reads as a failure to create them.
+- `check`, `frontier`, `ship`, and `init` now read through one `statusReport`. They had one copy
+  of the ordering and exit-code rules between them, and a second copy in `init` would have been
+  free to drift — an `init` that disagreed with the `check` it tells you to run makes both
+  untrustworthy.
+- New `test/init.test.mjs`. `init` had no test at all, including for the provisioning it already
+  did. The agreement between `init` and `check` is asserted directly rather than left to the
+  shared call, since the sharing is what a later edit would undo.
+
 ## 0.8.0
 
 The shape rule now arrives with the set it refers to.

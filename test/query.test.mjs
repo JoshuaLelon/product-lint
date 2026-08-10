@@ -18,6 +18,7 @@ const snapshot = {
 test("finds the full lineage for a governed file", () => {
   const result = knowledgeForFile(graph, [], "src/approve.ts");
   assert.deepEqual(result.lineage.map((node) => node.id), [
+    "audience.role.reviewer",
     "context.review-problem",
     "product.current-version",
     "behavior.approve-version",

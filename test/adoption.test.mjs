@@ -69,7 +69,7 @@ test("an empty graph reports the frontier once, not one wrong instruction per fi
     item.code.startsWith("PL2106"),
   );
   assert.equal(ungoverned.length, 1, "one diagnostic, whatever the file count");
-  assert.equal(ungoverned[0].requiredLevel, "context");
+  assert.equal(ungoverned[0].requiredLevel, "audience");
   assert.equal(ungoverned[0].action, "ask-user");
   assert.equal(ungoverned[0].infer, false);
   assert.deepEqual(ungoverned[0].details.files, [
@@ -83,6 +83,22 @@ test("an empty graph reports the frontier once, not one wrong instruction per fi
 
 test("the ungoverned diagnostic names the shallowest absent level, not always context", async () => {
   const { root, config } = await createBrownfieldRepository(1);
+  await mkdir(path.join(root, "docs", "audience"), { recursive: true });
+  await writeFile(
+    path.join(root, "docs", "audience", "role-solo.json"),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        id: "audience.role.solo",
+        level: "audience",
+        statement: "The product serves a person working alone.",
+        constrainedBy: [],
+        sync: { constraintsDigest: "pending" },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   await writeFile(
     path.join(root, "docs", "context", "problem.json"),
     `${JSON.stringify(
@@ -91,7 +107,7 @@ test("the ungoverned diagnostic names the shallowest absent level, not always co
         id: "context.problem",
         level: "context",
         statement: "One person loses track of their own work.",
-        constrainedBy: [],
+        constrainedBy: ["audience.role.solo"],
         sync: { constraintsDigest: "pending" },
       },
       null,
@@ -149,7 +165,7 @@ test("the frontier names the ungoverned files even with no Context node", async 
   const status = await inspectWorkingTree(config);
   const codes = status.frontier.diagnostics.map((item) => item.code);
 
-  assert.ok(codes.some((code) => code.startsWith("PL0001")), "Context is still the next question");
+  assert.ok(codes.some((code) => code.startsWith("PL0011")), "Audience is still the next question");
   const ungoverned = status.frontier.diagnostics.filter((item) => item.code.startsWith("PL0602"));
   assert.equal(ungoverned.length, 1);
   assert.equal(ungoverned[0].details.files.length, 4);

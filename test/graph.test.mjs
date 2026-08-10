@@ -12,6 +12,7 @@ test("builds a valid continuous knowledge DAG", () => {
   assert.equal(result.diagnostics.length, 0);
   assert.ok(result.graph);
   assert.deepEqual(result.graph.topologicalOrder, [
+    "audience.role.reviewer",
     "context.review-problem",
     "product.current-version",
     "behavior.approve-version",
@@ -22,7 +23,7 @@ test("builds a valid continuous knowledge DAG", () => {
 
 test("rejects skipped levels and downward dependencies", () => {
   const nodes = canonicalNodes();
-  nodes[2].constrainedBy = ["context.review-problem"];
+  nodes[3].constrainedBy = ["context.review-problem"];
   const result = buildKnowledgeGraph(nodes.map(source));
   const codes = new Set(result.diagnostics.map((item) => item.code));
   assert.ok(codes.has("PL1104 SKIPPED_KNOWLEDGE_LEVEL"));
@@ -30,12 +31,12 @@ test("rejects skipped levels and downward dependencies", () => {
 
 test("rejects cycles", () => {
   const nodes = canonicalNodes();
-  nodes[0].constrainedBy = ["context.second"];
+  nodes[1].constrainedBy = ["context.second"];
   nodes.push({
     id: "context.second",
     level: "context",
     statement: "A second problem.",
-    constrainedBy: ["context.review-problem"],
+    constrainedBy: ["context.review-problem", "audience.role.reviewer"],
     sync: { constraintsDigest: "pending" },
   });
   const result = buildKnowledgeGraph(nodes.map(source));

@@ -1,10 +1,10 @@
 # Product Lint
 
 Product Lint is a deterministic guardrail for building product knowledge alongside code.
-It stores canonical knowledge as a five-level JSON DAG:
+It stores canonical knowledge as a six-level JSON DAG:
 
 ```text
-Context -> Product -> Behavior -> Architecture -> Mechanism -> repository files
+Audience -> Context -> Product -> Behavior -> Architecture -> Mechanism -> repository files
 ```
 
 Git stores history. Product Lint validates the current graph, detects the next missing
@@ -19,7 +19,6 @@ belongs to the user, and how to put that decision to them cheaply.
 ```bash
 npm install --save-dev product-lint lefthook
 npx product-lint init
-npx product-lint check
 ```
 
 `init` writes `product-lint.config.json`, creates `docs/` with a `.gitkeep` per level,
@@ -27,11 +26,39 @@ adds Product Lint's `pre-commit` and `commit-msg` commands to your Lefthook conf
 (creating it, or appending to an existing one), and installs the Git hooks. Running it
 twice is safe.
 
+It then runs `check` against what it just wrote, and exits with that result. Provisioning
+is not an answer to "is this repository compliant", and on an adoption install the two
+differ sharply: `init` creates empty level folders beside a `docs/` tree that may already
+hold nodes, and those nodes have never been read. So `init` reads them, and a fresh
+repository ends on `PL0011 MISSING_AUDIENCE` — the next thing to do — rather than on a list
+of directories it made.
+
+The output names the boundary between the two phases:
+
+```text
+created ./product-lint.config.json
+created ./docs/audience
+...
+
+provisioning done. checking the working tree:
+
+PL0011 MISSING_AUDIENCE No canonical audience nodes exist.
+  question: Who is this product for? Name the sets that distinguish them, and the
+            values in each set.
+  ...
+```
+
+Because `init` carries `check`'s exit code, a successful install of an empty repository
+exits **2**, not 0. That is the honest answer — the graph is incomplete — but a script
+running `npx product-lint init` under `set -e` will stop there. Read the exit code as the
+state of the graph, and the printed lines as the state of the install; the two are
+reported separately on purpose.
+
 `init` will not edit a hook your Lefthook config already defines, because a duplicate
 top-level key would shadow your own jobs. It prints the commands it skipped, and they are
 not installed until you add them. Read what `init` prints; it reports what it did not do.
 
-`product-lint check` exits with:
+`product-lint check` — and `product-lint init`, which ends by running it — exits with:
 
 ```text
 0  valid and complete
@@ -39,7 +66,11 @@ not installed until you add them. Read what `init` prints; it reports what it di
 2  structurally valid but incomplete
 ```
 
-An empty repository therefore produces a machine-readable `MISSING_CONTEXT` diagnostic
+1 outranks 2: an invalid graph is not an incomplete one. Both commands read the working
+tree through the same function, so `init` can never report a state its own `check`
+contradicts.
+
+An empty repository therefore produces a machine-readable `MISSING_AUDIENCE` diagnostic
 rather than encouraging an agent to start from implementation.
 
 ## Adopting into a repository that already has code
@@ -49,7 +80,7 @@ arrived first. `governedPaths.include` is the control.
 
 Every changed governed file must resolve to a Mechanism node. A repository with a thousand
 files and no knowledge therefore cannot commit anything inside `src/**` until the spine
-reaches Mechanism — and the spine starts at Context, which only the user can answer.
+reaches Mechanism — and the spine starts at Audience, which only the user can answer.
 `PL2106 UNGOVERNED_IMPLEMENTATION` names that, once, instead of demanding a Mechanism node
 per file that `PL1104` would then reject.
 
@@ -94,10 +125,43 @@ can own them yet because the graph has no context level.
 would have to own. Once an Architecture node exists, each file gets its own
 `PL0601 UNMAPPED_FILE` again, because from then on the repair is per-file.
 
+## The example used throughout
+
+Every example below describes **one** product: a video review tool. Two audience sets
+distinguish its users, and every query, slice, and diagnostic in this README is real output
+from this graph.
+
+```text
+audience   role.reviewer   role.admin          <- what you do
+           segment.freelance   segment.studio  <- who you do it for
+
+context    review-state-lost          role.*                         every user
+           delivery-audit-required    segment.studio                 studios, any role
+           approval-authority-unclear role.admin + segment.studio    studio admins only
+           no-dedicated-admin         segment.freelance              freelancers, any role
+
+product    current-version         immutable-delivery-log
+           single-approver         self-serve-setup
+
+behavior   approve-version (current-version + single-approver)
+           see-current-version     read-delivery-log     invite-teammate
+
+architecture  approval-ownership   append-only-log       invite-flow
+
+mechanism  approval-command   -> src/approval/**
+           delivery-log-writer -> src/delivery/**
+           invite-service      -> src/invite/**
+```
+
+Note `behavior.approve-version`. It has two parents from two different lineages, one of them
+universal and one of them studio-admin only. That is the ordinary case, not a corner case,
+and it is what makes the queries below worth running rather than guessing.
+
 ## Repository model
 
 ```text
 docs/
+├── audience/
 ├── context/
 ├── product/
 ├── behavior/
@@ -114,10 +178,10 @@ Each canonical JSON file is one node:
   "schemaVersion": 1,
   "id": "behavior.approve-version",
   "level": "behavior",
-  "statement": "A reviewer can approve the current version of a shot.",
+  "statement": "A reviewer approves the current version of a shot.",
   "constrainedBy": [
     "product.current-version",
-    "product.approval-state"
+    "product.single-approver"
   ],
   "sync": {
     "constraintsDigest": "sha256:product-lint-constraints-v1:..."
@@ -131,16 +195,13 @@ Mechanism nodes alone bind knowledge to implementation:
 {
   "id": "mechanism.approval-command",
   "level": "mechanism",
-  "statement": "Approval commands are implemented in the application layer.",
+  "statement": "An application command performs approval.",
   "constrainedBy": ["architecture.approval-ownership"],
   "sync": {
     "constraintsDigest": "sha256:product-lint-constraints-v1:..."
   },
   "implementation": {
-    "files": [
-      "src/application/approve-version.ts",
-      "test/integration/approve-version.test.ts"
-    ],
+    "files": ["src/approval/**"],
     "digest": "sha256:product-lint-implementation-v1:..."
   }
 }
@@ -153,11 +214,74 @@ npx product-lint knowledge sync --staged
 git add docs/
 ```
 
+## Audience
+
+The audience level is not one set of nodes. It is **n sets**, each a partition of the
+people who use the product. The set a value belongs to is the second segment of its id:
+
+```text
+docs/audience/role-reviewer.json      audience.role.reviewer
+docs/audience/role-admin.json         audience.role.admin
+docs/audience/segment-freelance.json  audience.segment.freelance
+docs/audience/segment-studio.json     audience.segment.studio
+```
+
+Each set is a partition on its own: you have exactly one role and exactly one segment. The
+level as a whole is their product, which is why they are two sets and not one list — a flat
+list containing `admin` and `studio` would not be mutually exclusive, because a person is
+both.
+
+A Context names a **selector** over those sets. Values within one set read as OR, and sets
+read as AND:
+
+```json
+{
+  "id": "context.approval-authority-unclear",
+  "level": "context",
+  "statement": "Studio administrators cannot tell who may approve a delivery.",
+  "constrainedBy": ["audience.role.admin", "audience.segment.studio"]
+}
+```
+
+That is studio admins, and only them. Two parents from two different sets mean *both* —
+which no flat list of audiences can say, because a list of parents is a union. A freelance
+admin and a studio reviewer each match one half and neither matches the whole, so neither
+reaches this Context or anything below it.
+
+A set the Context does not name is unconstrained, so scoping to one axis costs one parent
+however many other axes exist:
+
+```json
+"constrainedBy": ["audience.segment.studio"]
+```
+
+That is every studio user, whatever their role — and it stays true when a third role is
+added later.
+
+To say "no set constrains this" and have it stay true, name the set itself:
+
+```json
+"constrainedBy": ["audience.role.*"]
+```
+
+**Use the wildcard rather than listing every value.** They mean the same thing today and
+different things tomorrow. A Context that lists `role.reviewer` and `role.admin` names two
+nodes, and neither of them changes when `role.producer` is created beside them — so the
+digest does not move, `check` stays green, and the Context quietly stops covering everyone
+while still claiming to. The wildcard is a parent whose fingerprint is the set's
+*membership*, so adding a value makes every node scoped by it stale, exactly as editing a
+statement would.
+
+Below Context, audience is **derived** as the union of a node's parents and never declared.
+So a node reaches everyone its parents reach, no node can claim a scope its ancestry does
+not give it, and narrowing something means giving it a narrower Context — not annotating it.
+
 ## Continuous lineage
 
 Product Lint requires a direct parent from the immediately preceding level:
 
 ```text
+Context      requires Audience
 Product      requires Context
 Behavior     requires Product
 Architecture requires Behavior
@@ -169,25 +293,140 @@ agent what to ask or create next.
 
 ## Queries
 
-What knowledge governs a file:
+Three questions, all answered against the graph above.
+
+### What knowledge governs this file?
 
 ```bash
-npx product-lint knowledge for-file src/application/approve-version.ts
-npx product-lint knowledge for-file src/application/approve-version.ts --json
+npx product-lint knowledge for-file src/delivery/log.ts
 ```
 
-What changes downstream of a node:
+```text
+audience: segment=studio
+audience.segment.studio	The product serves teams inside a studio that delivers to clients.
+context.delivery-audit-required	Clients require evidence that a studio approved a delivery.
+product.immutable-delivery-log	The product records every delivery approval in an immutable log.
+behavior.read-delivery-log	An administrator reads the approval history of a delivery.
+architecture.append-only-log	An append-only store holds delivery approval records.
+mechanism.delivery-log-writer	A writer appends delivery records to the store.
+```
+
+The `audience` line is the **resolved** answer, and it is not the same as reading the
+lineage. Ask the same question about a file two lineages reach:
+
+```bash
+npx product-lint knowledge for-file src/approval/approve-version.ts
+```
+
+```text
+audience: everyone
+audience.role.admin	The product serves people who administer a team account.
+audience.segment.studio	The product serves teams inside a studio that delivers to clients.
+context.approval-authority-unclear	Studio administrators cannot tell who may approve a delivery.
+context.review-state-lost	Reviewers lose track of which version they approved.
+product.current-version	Each shot has one current version.
+behavior.see-current-version	A reviewer sees which version of a shot is current.
+product.single-approver	One named person approves each delivery.
+behavior.approve-version	A reviewer approves the current version of a shot.
+architecture.approval-ownership	The application layer owns approval transitions.
+mechanism.approval-command	An application command performs approval.
+```
+
+The lineage lists `audience.role.admin` and `audience.segment.studio`, which reads as
+"studio admins". The file serves **everyone**. Both are true: the file is reached through
+the studio-admin Context *and* through `context.review-state-lost`, which names
+`audience.role.*` — a set, not a node, so it appears in no lineage. That is exactly why the
+resolved audience is printed rather than left to be inferred from the list.
+
+### What changes downstream of this node?
 
 ```bash
 npx product-lint knowledge affected-by product.current-version
 ```
 
-Query-scoped text for an LLM:
+```text
+audience: everyone
+node: product.current-version
+node: behavior.see-current-version
+node: behavior.approve-version
+node: architecture.approval-ownership
+node: mechanism.approval-command
+file: src/approval/approve-version.ts
+file: src/approval/state.ts
+```
+
+This is the blast radius of an edit: every node that must be re-read, and every file that
+may have to change. `commit check` enforces the same set — a semantic edit to
+`product.current-version` requires each of those descendants staged in the same commit.
+
+### What does one audience need, and what may be mocked?
 
 ```bash
-npx product-lint llms for-file src/application/approve-version.ts
+npx product-lint knowledge slice role=reviewer,segment=freelance
+```
+
+```text
+keep: role=reviewer,segment=freelance
+  kept   11 node(s), 3 file(s)
+    real src/approval/approve-version.ts
+    real src/approval/state.ts
+    real src/invite/send.ts
+  mocked 7 node(s), 1 file(s)
+    mock src/delivery/log.ts
+  contested 0 file(s)
+```
+
+```bash
+npx product-lint knowledge slice role=admin,segment=studio
+```
+
+```text
+keep: role=admin,segment=studio
+  kept   13 node(s), 3 file(s)
+    real src/approval/approve-version.ts
+    real src/approval/state.ts
+    real src/delivery/log.ts
+  mocked 5 node(s), 1 file(s)
+    mock src/invite/send.ts
+  contested 0 file(s)
+```
+
+Both keep approval, because `context.review-state-lost` is universal. The freelancer keeps
+invitations and mocks delivery logs; the studio admin does the reverse. Build one audience's
+experience for real and stub the rest, then swap the selector and swap which half is real.
+
+The mock set is the **complement of the keep closure**, never the closure of a mock root.
+Those two differ whenever a node has more than one parent, which is most real graphs:
+growing a mock set downward from "everyone else" stubs every node the kept audience happens
+to share with them — on this graph that would wrongly stub both approval files for both
+audiences. `contested` names that difference, and is `0` here precisely because the slice
+subtracts rather than grows.
+
+### The same views, written for an agent
+
+```bash
+npx product-lint llms for-file src/delivery/log.ts
 npx product-lint llms affected-by product.current-version
 ```
+
+```text
+# Product knowledge for file
+file: src/delivery/log.ts
+audience: segment=studio
+
+## audience.segment.studio
+level: audience
+statement: The product serves teams inside a studio that delivers to clients.
+
+## context.delivery-audit-required
+level: context
+statement: Clients require evidence that a studio approved a delivery.
+constrainedBy: audience.segment.studio
+...
+```
+
+The `llms` views carry the full statement of every node, plus the style and shape rules,
+because an agent that reads one usually goes on to edit a statement.
 
 Product Lint traverses the source JSON on demand. It does not persist a generated full graph.
 
@@ -313,7 +552,7 @@ run        the command to run
 
 `--json` returns the same fields.
 
-Context, Product, and Behavior state user intent, so their diagnostics carry
+Audience, Context, Product, and Behavior state user intent, so their diagnostics carry
 `action: ask-user` and `infer: false`. Architecture and Mechanism follow from the code, so
 they carry `infer: true` and an agent drafts them from the repository.
 
@@ -378,14 +617,24 @@ bind to files, so at that level the repository settles the question — see `PL0
 it the rule stays an instruction, because nothing there can be checked without judging what two
 sentences mean.
 
+The audience level carries a different `shape` rule, because it is the one level that is not a
+single set. Telling an agent to "keep the level a set of nodes that do not overlap" would have it
+write one node per combination — `admin-studio`, `admin-freelance`, and so on — which is the
+shape sets exist to avoid. And the general rule's repair for a duplicate is "add your parent to
+its constrainedBy instead", which cannot apply to a node that has no parents. So `PL0011` carries
+its own rule: n sets, each a partition, and a conjunction written as two parents rather than as a
+combined node.
+
 ## Overlapping mechanisms
 
 Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
 has an answer the repository can give:
 
 ```text
-PL0603 OVERLAPPING_MECHANISM mechanism.b claims every file mechanism.a claims. A governed file
-has one Mechanism owner.
+PL0603 OVERLAPPING_MECHANISM mechanism.approval-command claims every file
+mechanism.approval-state claims. A governed file has one Mechanism owner.
+  files (1):
+    src/approval/state.ts
   fix: Decide which Mechanism owns the shared files and narrow the other node's
        implementation.files so each governed file has exactly one owner. If neither node owns
        them alone because the two say the same thing, delete one and give the survivor both
@@ -405,14 +654,14 @@ participate in downward propagation. Evidence can be anchored to an immutable co
 {
   "$schema": "../../node_modules/product-lint/schema/reference-node.schema.json",
   "schemaVersion": 1,
-  "id": "reference.mistake-route-owned-transactions",
+  "id": "reference.mistake-approval-lost-on-reupload",
   "kind": "mistake",
-  "statement": "Route-owned transactions previously allowed dependent writes to commit independently.",
-  "relatedNodes": ["architecture.transaction-ownership"],
+  "statement": "Re-uploading a shot previously cleared an approval without telling the reviewer.",
+  "relatedNodes": ["architecture.approval-ownership"],
   "evidence": {
     "commit": "a3f19c2d8b7e4c1a9d0f6e2b5c8a1d3e9f7b6c4d",
     "files": [
-      { "path": "src/routes/orders.ts", "lines": [84, 126] }
+      { "path": "src/approval/state.ts", "lines": [84, 126] }
     ]
   }
 }
@@ -430,6 +679,7 @@ product-lint frontier [--json]
 product-lint ship [--json]
 product-lint knowledge for-file <path> [--json]
 product-lint knowledge affected-by <node-id> [--json]
+product-lint knowledge slice <set=value,...> [--json]
 product-lint knowledge sync --staged [--json]
 product-lint commit check --staged [--json]
 product-lint commit message <commit-message-file> [--json]
@@ -442,5 +692,5 @@ product-lint help
 
 ## Scope
 
-Version 0.1.0 intentionally does not include ADR files, plans, conventions, a persisted full
+Product Lint intentionally does not include ADR files, plans, conventions, a persisted full
 graph, semantic model calls, general `Built by` links, or tool-enforcement registries.

@@ -31,10 +31,17 @@ export async function git(root, ...args) {
 export function canonicalNodes() {
   return [
     {
+      id: "audience.role.reviewer",
+      level: "audience",
+      statement: "The product serves people who review video shots.",
+      constrainedBy: [],
+      sync: { constraintsDigest: "pending" },
+    },
+    {
       id: "context.review-problem",
       level: "context",
       statement: "Video teams lose track of review state.",
-      constrainedBy: [],
+      constrainedBy: ["audience.role.reviewer"],
       sync: { constraintsDigest: "pending" },
     },
     {

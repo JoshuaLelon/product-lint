@@ -9,6 +9,7 @@ import type {
   SyncResult,
 } from "./types.js";
 import { matchesAny } from "./glob.js";
+import { audienceAxis, audienceSetFingerprint, wildcardParents } from "./audience.js";
 import { nodeFingerprint, serializeNode } from "./graph.js";
 import { digest, sha256 } from "./stable-json.js";
 import { createSnapshot } from "./repository.js";
@@ -51,9 +52,20 @@ export async function expectedSynchronizedNodes(
 
   for (const id of graph.topologicalOrder) {
     const node = nodes.get(id)!;
-    const parentState = [...(graph.parents.get(id) ?? [])]
-      .sort()
-      .map((parentId) => ({ id: parentId, fingerprint: nodeFingerprint(nodes.get(parentId)!) }));
+    // A wildcard parent contributes the SET's membership, not a node's content.
+    // Without this a scope written as "every value of this set" would not move
+    // when the set gained a value, and the node would keep a digest that says
+    // it is current while its meaning has quietly changed underneath it.
+    const parentState = [
+      ...[...(graph.parents.get(id) ?? [])].map((parentId) => ({
+        id: parentId,
+        fingerprint: nodeFingerprint(nodes.get(parentId)!),
+      })),
+      ...wildcardParents(node).map((wildcard) => ({
+        id: wildcard,
+        fingerprint: audienceSetFingerprint(graph, audienceAxis(wildcard)!),
+      })),
+    ].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
     node.sync = {
       constraintsDigest: digest(parentState, "product-lint-constraints-v1"),
     };

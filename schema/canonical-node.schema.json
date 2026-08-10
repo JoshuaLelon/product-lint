@@ -10,10 +10,10 @@
     "schemaVersion": { "const": 1 },
     "id": {
       "type": "string",
-      "pattern": "^(context|product|behavior|architecture|mechanism)\\.[a-z0-9][a-z0-9._-]*$"
+      "pattern": "^(audience|context|product|behavior|architecture|mechanism)\\.[a-z0-9][a-z0-9._-]*$"
     },
     "level": {
-      "enum": ["context", "product", "behavior", "architecture", "mechanism"]
+      "enum": ["audience", "context", "product", "behavior", "architecture", "mechanism"]
     },
     "statement": { "type": "string", "minLength": 1 },
     "constrainedBy": {

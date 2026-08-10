@@ -10,6 +10,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import {
   annotateDiagnostic,
+  AUDIENCE_SHAPE,
   buildKnowledgeGraph,
   inspectWorkingTree,
   formatDiagnostic,
@@ -59,6 +60,27 @@ for (const code of [
   });
 }
 
+test("the audience level takes its own shape rule, because it is n sets and not one", () => {
+  const annotated = annotateDiagnostic({
+    code: "PL0011 MISSING_AUDIENCE",
+    severity: "info",
+    message: "x",
+  });
+  assert.equal(annotated.shape, AUDIENCE_SHAPE);
+  assert.notEqual(annotated.shape, NODE_SHAPE);
+});
+
+test("the audience rule does not carry advice that cannot apply to a parentless node", () => {
+  // The general rule's repair for a duplicate is "add your parent to its
+  // constrainedBy instead". Audience nodes have no parents, so that sentence
+  // would send an agent to do something the level forbids.
+  assert.match(NODE_SHAPE, /Add your parent to its constrainedBy/);
+  assert.doesNotMatch(AUDIENCE_SHAPE, /Add your parent to its constrainedBy/);
+  // And it must say the thing the general rule cannot: one node per combination
+  // is the shape this level exists to avoid.
+  assert.match(AUDIENCE_SHAPE, /Do not write one node per combination/);
+});
+
 test("a diagnostic that adds no node carries no shape rule", () => {
   // PL2101 is about a file with no owner, not about authoring a node, and a rule
   // printed everywhere is a rule nobody reads.
@@ -93,7 +115,7 @@ test("the frontier prints the shape rule to a real repository", async () => {
         id: "context.second",
         level: "context",
         statement: "A second context with no product below it.",
-        constrainedBy: [],
+        constrainedBy: ["audience.role.reviewer"],
         sync: { constraintsDigest: "pending" },
       },
       null,

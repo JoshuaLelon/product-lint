@@ -2,7 +2,19 @@ export { loadConfig } from "./config.js";
 export { validateSnapshot } from "./validation.js";
 export { buildKnowledgeGraph, loadCanonicalNodes, ancestorsOf, descendantsOf } from "./graph.js";
 export { detectFrontier, filesForMechanism, governedFiles } from "./frontier.js";
-export { knowledgeForFile, affectedByNode } from "./queries.js";
+export { knowledgeForFile, affectedByNode, sliceForAudience } from "./queries.js";
+export {
+  audienceSets,
+  audienceSetFingerprint,
+  audienceContains,
+  audienceMatches,
+  audienceOverlaps,
+  formatAudience,
+  simplifyAudience,
+  isAudienceWildcard,
+  parseSelector,
+  resolveAudiences,
+} from "./audience.js";
 export { synchronizeStaged, expectedSynchronizedNodes, synchronizationDiagnostics } from "./sync.js";
 export { checkStagedCommit, checkCommitMessage, classifyNodeChanges } from "./commit.js";
 export { inspectWorkingTree } from "./status.js";
@@ -16,5 +28,6 @@ export {
   ASK_FORMATS,
   STATEMENT_STYLE,
   NODE_SHAPE,
+  AUDIENCE_SHAPE,
 } from "./remediation.js";
 export type * from "./types.js";

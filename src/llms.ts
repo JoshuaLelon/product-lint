@@ -32,7 +32,12 @@ function renderNode(node: SourceCanonicalNode): string {
 }
 
 export function renderFileKnowledgeForLlm(result: FileKnowledgeResult): string {
-  const lines = ["# Product knowledge for file", `file: ${result.file}`, ""];
+  // The lineage lists the audience NODES it passed through, and a wildcard is
+  // not a node — so a file reached through one reads as scoped to whatever other
+  // audience parent it happens to have. State the resolved answer beside it.
+  const lines = ["# Product knowledge for file", `file: ${result.file}`];
+  if (result.audience) lines.push(`audience: ${result.audience}`);
+  lines.push("");
   for (const node of result.lineage) lines.push(renderNode(node), "");
   if (result.references.length > 0) {
     lines.push("# Relevant references", "");
@@ -45,7 +50,9 @@ export function renderFileKnowledgeForLlm(result: FileKnowledgeResult): string {
 }
 
 export function renderAffectedKnowledgeForLlm(result: AffectedKnowledgeResult): string {
-  const lines = ["# Product knowledge affected by node", renderNode(result.node), ""];
+  const lines = ["# Product knowledge affected by node", renderNode(result.node)];
+  if (result.audience) lines.push(`audience: ${result.audience}`);
+  lines.push("");
   if (result.descendants.length > 0) {
     lines.push("# Descendant knowledge", "");
     for (const node of result.descendants) lines.push(renderNode(node), "");

@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 import path from "node:path";
 import { parseArgs } from "node:util";
+import type { Diagnostic, ResolvedConfig } from "./types.js";
 import { loadConfig } from "./config.js";
 import { formatDiagnostics, hasErrors } from "./diagnostics.js";
 import { annotateDiagnostics } from "./remediation.js";
 import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { inspectWorkingTree } from "./status.js";
-import { knowledgeForFile, affectedByNode } from "./queries.js";
+import { knowledgeForFile, affectedByNode, sliceForAudience } from "./queries.js";
 import { renderAffectedKnowledgeForLlm, renderFileKnowledgeForLlm } from "./llms.js";
 import { synchronizeStaged } from "./sync.js";
 import { checkCommitMessage, checkStagedCommit } from "./commit.js";
@@ -25,6 +26,7 @@ Usage:
   product-lint ship [--json]
   product-lint knowledge for-file <path> [--json]
   product-lint knowledge affected-by <node-id> [--json]
+  product-lint knowledge slice <set=value,...> [--json]
   product-lint knowledge sync --staged [--json]
   product-lint commit check --staged [--json]
   product-lint commit message <commit-message-file> [--json]
@@ -71,6 +73,62 @@ function emit(value: unknown, json: boolean): void {
   else console.log(String(value));
 }
 
+type StatusCommand = "check" | "frontier" | "ship";
+
+interface StatusReport {
+  complete: boolean;
+  dirty: boolean;
+  /** Everything the command reports, in the order it reports it. */
+  all: Diagnostic[];
+  /** The subset that decides exit code 1, as against an incomplete frontier. */
+  blocking: Diagnostic[];
+}
+
+/**
+ * The working-tree read behind `check`, `frontier`, `ship`, and the compliance
+ * half of `init`. It is one function because those commands must agree: an
+ * `init` that reported a state its own `check` contradicts would teach the
+ * reader to distrust both.
+ */
+async function statusReport(
+  config: ResolvedConfig,
+  command: StatusCommand,
+): Promise<StatusReport> {
+  const status = await inspectWorkingTree(config);
+  const structural = status.validation.diagnostics;
+  const sync = status.synchronization;
+  const frontier = status.frontier.diagnostics;
+  const dirty = command === "ship" ? await isWorkingTreeDirty(config.root) : false;
+  const shipDiagnostics: Diagnostic[] = dirty
+    ? [
+        {
+          code: "PL0701 DIRTY_SHIP_TREE",
+          severity: "error",
+          message: "Working tree must be clean before shipping.",
+        },
+      ]
+    : [];
+  return {
+    complete: status.frontier.complete && !dirty,
+    dirty,
+    all:
+      command === "frontier"
+        ? frontier
+        : [...structural, ...sync, ...frontier, ...shipDiagnostics],
+    blocking: [...structural, ...sync, ...shipDiagnostics],
+  };
+}
+
+/**
+ * 1 outranks 2. An invalid graph is not an incomplete one, and reporting the
+ * softer code over a hard error would let a broken graph read as work in
+ * progress.
+ */
+function applyStatusExitCode(report: StatusReport): void {
+  if (hasErrors(report.blocking)) process.exitCode = 1;
+  else if (!report.complete) process.exitCode = 2;
+}
+
 async function main(): Promise<void> {
   const [command = "help", ...rest] = process.argv.slice(2);
   if (["help", "--help", "-h"].includes(command)) {
@@ -88,14 +146,35 @@ async function main(): Promise<void> {
   if (command === "init") {
     const parsed = parseCommon(rest);
     const result = await initProject(process.cwd(), parsed.values.force);
-    if (parsed.values.json) console.log(stringifyJson(result));
-    else {
+    // Provisioning is not an answer to "is this repository compliant", and on an
+    // adoption install the two differ sharply: init creates empty level folders
+    // beside a docs tree that may already hold nodes, and those nodes have never
+    // been read. Telling the user to run `check` and stopping left the one moment
+    // the tool has their attention unspent. So read back what init just wrote.
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    const report = await statusReport(config, "check");
+    if (parsed.values.json) {
+      console.log(
+        stringifyJson({
+          ...result,
+          check: {
+            complete: report.complete,
+            diagnostics: annotateDiagnostics(report.all),
+          },
+        }),
+      );
+    } else {
       for (const file of result.created) console.log(`created ${file}`);
       for (const file of result.skipped) console.log(`skipped ${file}`);
       if (result.notes.length > 0) console.log("");
       for (const note of result.notes) console.log(note);
-      console.log("\nRun: npx product-lint check");
+      // Named, because the output changes subject here. Above is what init wrote;
+      // below is what the working tree says, and an unlabelled diagnostic after a
+      // list of created paths reads as a failure to create them.
+      console.log("\nprovisioning done. checking the working tree:\n");
+      process.stdout.write(formatDiagnostics(report.all));
     }
+    applyStatusExitCode(report);
     return;
   }
 
@@ -111,34 +190,19 @@ async function main(): Promise<void> {
       return;
     }
 
-    const status = await inspectWorkingTree(config);
-    const structural = status.validation.diagnostics;
-    const sync = status.synchronization;
-    const frontier = status.frontier.diagnostics;
-    const dirty = command === "ship" ? await isWorkingTreeDirty(config.root) : false;
-    const shipDiagnostics = dirty
-      ? [{
-          code: "PL0701 DIRTY_SHIP_TREE",
-          severity: "error" as const,
-          message: "Working tree must be clean before shipping.",
-        }]
-      : [];
-    const all = command === "frontier"
-      ? frontier
-      : [...structural, ...sync, ...frontier, ...shipDiagnostics];
+    const report = await statusReport(config, command as StatusCommand);
     if (parsed.values.json) {
       console.log(
         stringifyJson({
-          complete: status.frontier.complete && !dirty,
-          diagnostics: annotateDiagnostics(all),
-          ...(command === "ship" ? { dirty } : {}),
+          complete: report.complete,
+          diagnostics: annotateDiagnostics(report.all),
+          ...(command === "ship" ? { dirty: report.dirty } : {}),
         }),
       );
     } else {
-      process.stdout.write(formatDiagnostics(all));
+      process.stdout.write(formatDiagnostics(report.all));
     }
-    if (hasErrors([...structural, ...sync, ...shipDiagnostics])) process.exitCode = 1;
-    else if (!status.frontier.complete) process.exitCode = 2;
+    applyStatusExitCode(report);
     return;
   }
 
@@ -176,7 +240,33 @@ async function main(): Promise<void> {
       const result = knowledgeForFile(validation.graph, validation.references, subject);
       if (command === "llms") process.stdout.write(renderFileKnowledgeForLlm(result));
       else if (parsed.values.json) console.log(stringifyJson(result));
-      else emit(result.lineage.map((node) => `${node.id}\t${node.statement}`).join("\n"), false);
+      else {
+        if (result.audience) console.log(`audience: ${result.audience}`);
+        emit(result.lineage.map((node) => `${node.id}\t${node.statement}`).join("\n"), false);
+      }
+      return;
+    }
+    if (action === "slice") {
+      const result = sliceForAudience(validation.graph, snapshot, subject);
+      if (parsed.values.json) {
+        console.log(
+          stringifyJson({
+            ...result,
+            keptNodes: result.keptNodes.map((node) => node.id),
+            mockedNodes: result.mockedNodes.map((node) => node.id),
+          }),
+        );
+      } else {
+        console.log(`keep: ${result.keep}`);
+        console.log(`  kept   ${result.keptNodes.length} node(s), ${result.keptFiles.length} file(s)`);
+        for (const file of result.keptFiles) console.log(`    real ${file}`);
+        console.log(`  mocked ${result.mockedNodes.length} node(s), ${result.mockedFiles.length} file(s)`);
+        for (const file of result.mockedFiles) console.log(`    mock ${file}`);
+        // Stated, never silent: these are the files a mock set grown from the
+        // other audiences would have stubbed out from under the kept one.
+        console.log(`  contested ${result.contestedFiles.length} file(s)`);
+        for (const file of result.contestedFiles) console.log(`    both ${file}`);
+      }
       return;
     }
     if (action === "affected-by") {
@@ -184,6 +274,7 @@ async function main(): Promise<void> {
       if (command === "llms") process.stdout.write(renderAffectedKnowledgeForLlm(result));
       else if (parsed.values.json) console.log(stringifyJson(result));
       else {
+        if (result.audience) console.log(`audience: ${result.audience}`);
         console.log(`node: ${result.node.id}`);
         for (const node of result.descendants) console.log(`node: ${node.id}`);
         for (const file of result.files) console.log(`file: ${file}`);

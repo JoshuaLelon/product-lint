@@ -10,6 +10,13 @@ import type {
   ResolvedConfig,
   SourceCanonicalNode,
 } from "./types.js";
+import { KNOWLEDGE_LEVELS } from "./types.js";
+import {
+  audienceContains,
+  audienceSets,
+  formatAudience,
+  resolveAudiences,
+} from "./audience.js";
 import { matchesAny, normalizePath } from "./glob.js";
 import {
   descendantsOf,
@@ -85,7 +92,7 @@ function ownersForFile(graph: KnowledgeGraph | undefined, file: string): SourceC
 
 function changedCanonicalPaths(config: ResolvedConfig, changes: GitChange[]): Set<string> {
   const root = normalizePath(path.relative(config.root, config.knowledgeRoot));
-  const prefixes = ["context", "product", "behavior", "architecture", "mechanism"].map(
+  const prefixes = [...KNOWLEDGE_LEVELS].map(
     (level) => `${root}/${level}/`,
   );
   const output = new Set<string>();
@@ -262,7 +269,52 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
     }
   }
 
+  diagnostics.push(...widenedAudiences(headValidation.graph, stagedValidation.graph));
+
   return { diagnostics, nodeChanges, changedImplementationFiles };
+}
+
+/**
+ * A node whose audience grew.
+ *
+ * Audience below Context is the union of a node's parents, so adding a parent
+ * can only widen and never narrow, and it does so without changing a single
+ * word of the node itself. That is the mirror of the reason wildcards exist: in
+ * both cases the meaning moves while the statement stands still. This one is
+ * decidable — the two graphs are right here — so it is reported rather than
+ * instructed, as a warning, because widening is often exactly what was wanted.
+ */
+export function widenedAudiences(
+  head: KnowledgeGraph | undefined,
+  staged: KnowledgeGraph | undefined,
+): Diagnostic[] {
+  if (!head || !staged) return [];
+  const before = resolveAudiences(head);
+  const after = resolveAudiences(staged);
+  const axes = [...new Set([...audienceSets(head).keys(), ...audienceSets(staged).keys()])].sort();
+  if (axes.length === 0) return [];
+
+  const diagnostics: Diagnostic[] = [];
+  for (const [id, node] of staged.nodes) {
+    if (node.level === "audience" || node.level === "context") continue;
+    const was = before.get(id);
+    const now = after.get(id);
+    if (!was || !now || was.length === 0) continue;
+    if (audienceContains(was, now, axes)) continue;
+    diagnostics.push({
+      code: "PL2107 AUDIENCE_WIDENED",
+      severity: "warning",
+      message: `${id} now serves a wider audience than it did at HEAD.`,
+      nodeId: id,
+      path: node.sourcePath,
+      action: "inspect",
+      details: {
+        before: formatAudience(was, axes),
+        after: formatAudience(now, axes),
+      },
+    });
+  }
+  return diagnostics;
 }
 
 function parseCommitMessage(text: string, trailer: string): {

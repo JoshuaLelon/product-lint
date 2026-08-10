@@ -6,9 +6,15 @@ import type { Diagnostic } from "./types.js";
  * and a guess about product intent is the failure this tool exists to prevent.
  */
 const FIXES: Record<string, string> = {
-  // Frontier. Context, Product, and Behavior state user intent, so an agent must
-  // ask the user. Architecture and Mechanism follow from the code, so an agent may
-  // propose them and let the user correct the proposal.
+  // Frontier. Audience, Context, Product, and Behavior state user intent, so an
+  // agent must ask the user. Architecture and Mechanism follow from the code, so
+  // an agent may propose them and let the user correct the proposal.
+  "PL0011 MISSING_AUDIENCE":
+    "Search the repository for an existing answer first. Then put the question to the user in one of the formats below. Name each set that distinguishes your users, and every value in it. Create docs/audience/<set>-<value>.json from details.nodeTemplate, then run product-lint knowledge sync --staged.",
+  "PL1106 MISSING_AUDIENCE_SET":
+    "This wildcard names an audience set with no values. Either create docs/audience/<set>-<value>.json for each value of that set, or remove the wildcard from constrainedBy.",
+  "PL2107 AUDIENCE_WIDENED":
+    "Adding this parent widened the node's audience. If that is intended, keep it. If it is not, remove the parent that widened it — audience below Context is derived from ancestry, so a node reaches everyone its parents reach.",
   "PL0001 MISSING_CONTEXT":
     "Search the repository for an existing answer first. Then put the question to the user in one of the formats below. Create docs/context/<name>.json from details.nodeTemplate, then run product-lint knowledge sync --staged.",
   "PL0101 MISSING_PRODUCT":
@@ -44,7 +50,7 @@ const FIXES: Record<string, string> = {
   "PL1004 INVALID_NODE_ID":
     "Rewrite the id as the level, a dot, then lowercase words joined by hyphens. Use letters, digits, dots, hyphens, and underscores only.",
   "PL1005 INVALID_LEVEL":
-    'Set level to one of "context", "product", "behavior", "architecture", or "mechanism".',
+    'Set level to one of "audience", "context", "product", "behavior", "architecture", or "mechanism".',
   "PL1006 LEVEL_FOLDER_MISMATCH":
     "Move the file to docs/<level>/, or change the level field to match the folder.",
   "PL1007 ID_LEVEL_MISMATCH":
@@ -52,7 +58,7 @@ const FIXES: Record<string, string> = {
   "PL1009 MISSING_STATEMENT":
     "Add a statement that says what is true at this level. Write one sentence.",
   "PL1010 MISSING_CONSTRAINTS":
-    'Add "constrainedBy": []. A Context node uses an empty array. Every other level lists its direct parents.',
+    'Add "constrainedBy": []. An Audience node uses an empty array. Every other level lists its direct parents, and a Context may name an audience set with audience.<set>.*.',
   "PL1011 INVALID_CONSTRAINT":
     "Make every constrainedBy entry a node id string. Remove objects, numbers, and null.",
   "PL1012 INVALID_SYNC":
@@ -68,7 +74,7 @@ const FIXES: Record<string, string> = {
   "PL1102 MISSING_CONSTRAINT_NODE":
     "Create the missing parent node, or correct the id in constrainedBy. Check for a typo first.",
   "PL1103 ILLEGAL_DEPENDENCY_DIRECTION":
-    "Knowledge flows down only: Context, Product, Behavior, Architecture, Mechanism. Remove the upward entry from constrainedBy.",
+    "Knowledge flows down only: Audience, Context, Product, Behavior, Architecture, Mechanism. Remove the upward entry from constrainedBy.",
   "PL1104 SKIPPED_KNOWLEDGE_LEVEL":
     "Add a parent from the level directly above this one. A level cannot be skipped. Create that parent node first if it does not exist.",
   "PL1105 KNOWLEDGE_CYCLE":
@@ -148,6 +154,7 @@ export const ASK_FORMATS = [
 
 /** Diagnostics that need an answer from the user. */
 const ASK_CODES = new Set([
+  "PL0011 MISSING_AUDIENCE",
   "PL0001 MISSING_CONTEXT",
   "PL0101 MISSING_PRODUCT",
   "PL0201 MISSING_BEHAVIOR",
@@ -193,8 +200,28 @@ export const NODE_SHAPE = [
   "Name what the level does not cover yet. A gap you can name is work; a gap you cannot see is a wrong answer later.",
 ].join("\n");
 
+/**
+ * The shape rule for the audience level, which is shaped unlike every other.
+ *
+ * Every other level is one set of nodes. Audience is n sets, and the general
+ * rule misleads at both ends: "keep the level a set that does not overlap"
+ * reads as one flat list, and its repair — give the duplicate your parent —
+ * cannot apply to nodes that have no parents. An agent given the general rule
+ * here writes one node per combination, which is the shape this level exists
+ * to avoid.
+ */
+export const AUDIENCE_SHAPE = [
+  "The audience level is n sets, not one. Write audience.<set>.<value>.",
+  "A set is one question about a person that has exactly one answer. Its values are the answers. Role and plan are two sets, because a person has one of each.",
+  "Keep every set a partition: each person has exactly one value in it, and the values together cover everyone.",
+  "Do not write one node per combination. A Context that names one value from each of two sets already means both, because sets are read as AND and values within a set as OR.",
+  "Add a set only when some Context is true for one of its values and false for another. A set no Context distinguishes is a set that does the graph no work.",
+  "Audience nodes have no parents. Name what no set distinguishes yet: a segment you can name is work, and one you cannot see is a wrong answer later.",
+].join("\n");
+
 /** Diagnostics that ask a human or an agent to write prose. */
 const STYLE_CODES = new Set([
+  "PL0011 MISSING_AUDIENCE",
   "PL0001 MISSING_CONTEXT",
   "PL0101 MISSING_PRODUCT",
   "PL0201 MISSING_BEHAVIOR",
@@ -224,7 +251,14 @@ export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
   const fix = diagnostic.fix ?? FIXES[diagnostic.code];
   const ask = diagnostic.ask ?? (ASK_CODES.has(diagnostic.code) ? ASK_FORMATS : undefined);
   const style = diagnostic.style ?? (STYLE_CODES.has(diagnostic.code) ? STATEMENT_STYLE : undefined);
-  const shape = diagnostic.shape ?? (SHAPE_CODES.has(diagnostic.code) ? NODE_SHAPE : undefined);
+  // The audience level is n sets rather than one, so it takes its own rule.
+  const shape =
+    diagnostic.shape ??
+    (diagnostic.code === "PL0011 MISSING_AUDIENCE"
+      ? AUDIENCE_SHAPE
+      : SHAPE_CODES.has(diagnostic.code)
+        ? NODE_SHAPE
+        : undefined);
   if (!fix && !ask && !style && !shape) return diagnostic;
   return {
     ...diagnostic,

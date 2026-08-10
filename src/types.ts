@@ -1,4 +1,5 @@
 export const KNOWLEDGE_LEVELS = [
+  "audience",
   "context",
   "product",
   "behavior",
@@ -103,6 +104,21 @@ export interface KnowledgeGraph {
   topologicalOrder: string[];
 }
 
+/**
+ * One conjunct of an audience: for each set, either the named values or "*".
+ * A missing set reads as "*", so a term never has to name a set to leave it
+ * alone — which is what keeps a scope correct when that set gains a value.
+ */
+export type AudienceTerm = Record<string, Set<string> | "*">;
+
+/**
+ * A node's audience is a UNION of terms, not one term. Sets are closed under
+ * intersection and not under union, and inheritance below Context is a union,
+ * so the disjunction is the honest shape. The term count is bounded by a node's
+ * distinct Context ancestors, never by the size of the product of the sets.
+ */
+export type Audience = AudienceTerm[];
+
 export type DiagnosticSeverity = "error" | "warning" | "info";
 export type DiagnosticAction = "ask-user" | "edit-node" | "run-command" | "inspect";
 
@@ -145,6 +161,8 @@ export interface FileKnowledgeResult {
   file: string;
   mechanisms: SourceCanonicalNode[];
   lineage: SourceCanonicalNode[];
+  /** Resolved audience, absent when the graph defines no audience sets. */
+  audience?: string;
   references: SourceReferenceNode[];
 }
 
@@ -153,6 +171,8 @@ export interface AffectedKnowledgeResult {
   descendants: SourceCanonicalNode[];
   mechanisms: SourceCanonicalNode[];
   files: string[];
+  /** Resolved audience, absent when the graph defines no audience sets. */
+  audience?: string;
   references: SourceReferenceNode[];
 }
 

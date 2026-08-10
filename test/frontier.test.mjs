@@ -19,13 +19,13 @@ test("reports missing Context for an empty graph", () => {
   const graph = buildKnowledgeGraph([]).graph;
   const result = detectFrontier(config, graph, snapshot([]));
   assert.equal(result.complete, false);
-  assert.equal(result.diagnostics[0].code, "PL0001 MISSING_CONTEXT");
+  assert.equal(result.diagnostics[0].code, "PL0011 MISSING_AUDIENCE");
   assert.equal(result.diagnostics[0].action, "ask-user");
   assert.equal(result.diagnostics[0].infer, false);
 });
 
 test("reports the next missing level", () => {
-  const graph = buildKnowledgeGraph(canonicalNodes().slice(0, 2).map(source)).graph;
+  const graph = buildKnowledgeGraph(canonicalNodes().slice(0, 3).map(source)).graph;
   const result = detectFrontier(config, graph, snapshot([]));
   assert.ok(result.diagnostics.some((item) => item.code === "PL0201 MISSING_BEHAVIOR"));
 });

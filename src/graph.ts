@@ -9,6 +9,7 @@ import type {
   SourceCanonicalNode,
 } from "./types.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
+import { audienceAxis, audienceSetMembers, isAudienceWildcard } from "./audience.js";
 import { normalizePath } from "./glob.js";
 import { digest, stableStringify } from "./stable-json.js";
 
@@ -75,7 +76,7 @@ function parseCanonicalNode(
       message: "Canonical node is missing a non-empty id.",
       path: sourcePath,
     });
-  } else if (!/^(context|product|behavior|architecture|mechanism)\.[a-z0-9][a-z0-9._-]*$/.test(id)) {
+  } else if (!/^(audience|context|product|behavior|architecture|mechanism)\.[a-z0-9][a-z0-9._-]*$/.test(id)) {
     diagnostics.push({
       code: "PL1004 INVALID_NODE_ID",
       severity: "error",
@@ -279,9 +280,30 @@ export function buildKnowledgeGraph(
   for (const node of nodes.values()) {
     const nodeIndex = LEVEL_INDEX.get(node.level)!;
     const immediateParentLevel = nodeIndex > 0 ? KNOWLEDGE_LEVELS[nodeIndex - 1] : undefined;
-    let hasImmediateParent = node.level === "context";
+    let hasImmediateParent = node.level === KNOWLEDGE_LEVELS[0];
 
     for (const parentId of node.constrainedBy) {
+      // A wildcard names an audience SET rather than a node, so it resolves
+      // against the set's membership instead of the node map. It is the only
+      // way to say "this set does not constrain me" that survives the set
+      // gaining a value — naming every current value says the same thing today
+      // and a different thing tomorrow, and nothing would report the drift.
+      if (isAudienceWildcard(parentId)) {
+        const axis = audienceAxis(parentId)!;
+        if (!audienceSetMembers(nodes.values(), axis).length) {
+          diagnostics.push({
+            code: "PL1106 MISSING_AUDIENCE_SET",
+            severity: "error",
+            message: `constrainedBy references audience set "${axis}", which has no values.`,
+            nodeId: node.id,
+            path: node.sourcePath,
+            details: { axis },
+          });
+          continue;
+        }
+        if (immediateParentLevel === "audience") hasImmediateParent = true;
+        continue;
+      }
       const parent = nodes.get(parentId);
       if (!parent) {
         diagnostics.push({
