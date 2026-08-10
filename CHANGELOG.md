@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0
+
+The shape rule now arrives with the set it refers to.
+
+- `PL0101`, `PL0201`, `PL0301`, and `PL0401` carry `details.level`: the id and statement of every
+  node already at the level they are about to add one to, capped at twenty with the total stated.
+  `NODE_SHAPE` has always said to read the nodes already at that level before writing a sibling,
+  and nothing showed them. That gap has a measured cost — an agent mined a level it had not
+  re-read and produced three duplicate pairs and one subset, each of which read correct alone.
+  A rule about a set the reader cannot see is advice, not information.
+- `formatDiagnostic` renders it, so it reaches the pre-commit hook rather than only `--json`.
+  This matters more than a command would: the frontier already runs on every check, so the level
+  arrives without anyone choosing to ask for it.
+- New `test/invariants.test.mjs`. The frontier and `knowledgeForFile` each decide which governed
+  files have no Mechanism owner, using the same predicate spelled twice, and nothing tied them
+  together. A consumer can use their disagreement as a self-check — if the frontier reports every
+  file owned and the query names an owner for none, both cannot be true, and the wrong half is
+  the reading rather than the data. That check is only sound while the two agree, so the contract
+  is asserted rather than left to coincidence. Tested where the set is non-empty, since two empty
+  sets are equal for free.
+
 ## 0.7.0
 
 Removes the spectrum and the ratchet, which 0.5.0 added and nothing needed.

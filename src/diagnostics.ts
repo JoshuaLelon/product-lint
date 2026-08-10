@@ -41,6 +41,24 @@ export function formatDiagnostic(input: Diagnostic): string {
   if (diagnostic.style) lines.push(wrap("style", diagnostic.style));
   if (diagnostic.shape) lines.push(wrap("shape", diagnostic.shape));
   if (diagnostic.command) lines.push(`  run: ${diagnostic.command}`);
+  // The shape rule says to read the level before adding to it. Printing the
+  // rule without the level asks the reader to recall a set they have not seen,
+  // which is how a duplicate sibling gets written: it reads correct alone, and
+  // only the set shows the overlap.
+  const level = diagnostic.details?.level as
+    | { total: number; shown: { id: string; statement: string }[] }
+    | undefined;
+  if (level && level.shown.length > 0) {
+    lines.push(`  ${diagnostic.requiredLevel} already has (${level.total}):`);
+    for (const node of level.shown) {
+      lines.push(`    ${node.id}`);
+      lines.push(`      ${node.statement}`);
+    }
+    const hidden = level.total - level.shown.length;
+    // Stated, never silent. A list that stops without saying so reads as whole.
+    if (hidden > 0) lines.push(`    ... and ${hidden} more not shown`);
+  }
+
   // A diagnostic that speaks for many files must name them. The tree is the
   // readable form of that list, and it is the difference between "something in
   // src is ungoverned" and knowing which directory holds the work.

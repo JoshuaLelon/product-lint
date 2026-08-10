@@ -80,7 +80,42 @@ export function firstAbsentLevel(graph: KnowledgeGraph): KnowledgeLevel | undefi
   );
 }
 
-function missingChildDiagnostic(nodeId: string, requiredLevel: KnowledgeLevel): Diagnostic {
+/**
+ * Every node that already sits at a level, for the diagnostic that is about to
+ * add one more.
+ *
+ * NODE_SHAPE tells an agent to read the nodes already at the level before
+ * writing a sibling, and until now nothing showed them. That gap has a known
+ * cost: an agent mined a level it had not re-read and produced three duplicate
+ * pairs, each of which read correct alone. The rule and the set it refers to
+ * have to arrive together, or the rule is advice about information the reader
+ * does not have.
+ *
+ * Capped, and the cap is stated, for the same reason the file tree states its
+ * own limits: a list that silently stops reads as a complete list.
+ */
+const LEVEL_SAMPLE_LIMIT = 20;
+
+function nodesAtLevel(
+  graph: KnowledgeGraph,
+  level: KnowledgeLevel,
+): { total: number; shown: { id: string; statement: string }[] } {
+  const all = [...graph.nodes.values()]
+    .filter((node) => node.level === level)
+    .sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+  return {
+    total: all.length,
+    shown: all
+      .slice(0, LEVEL_SAMPLE_LIMIT)
+      .map((node) => ({ id: node.id, statement: node.statement })),
+  };
+}
+
+function missingChildDiagnostic(
+  nodeId: string,
+  requiredLevel: KnowledgeLevel,
+  graph: KnowledgeGraph,
+): Diagnostic {
   const definitions = LEVEL_AUTHORITY;
   const definition = definitions[requiredLevel];
   const codeByLevel: Record<KnowledgeLevel, string> = {
@@ -110,6 +145,7 @@ function missingChildDiagnostic(nodeId: string, requiredLevel: KnowledgeLevel): 
         constrainedBy: [nodeId],
         sync: { constraintsDigest: "pending" },
       },
+      level: nodesAtLevel(graph, requiredLevel),
     },
   };
 }
@@ -160,7 +196,7 @@ export function detectFrontier(
       const hasNextLevelChild = [...(graph.children.get(node.id) ?? [])].some(
         (childId) => graph.nodes.get(childId)?.level === nextLevel,
       );
-      if (!hasNextLevelChild) diagnostics.push(missingChildDiagnostic(node.id, nextLevel));
+      if (!hasNextLevelChild) diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph));
     }
   }
 
