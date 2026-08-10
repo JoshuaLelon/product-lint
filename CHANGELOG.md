@@ -60,6 +60,12 @@ Audience becomes a level, structured as n sets rather than one.
   video review, an orders service, and the SSO example — so no query example could be read
   against the graph the example before it established. Every command output in it is now real
   output from the single graph in "The example used throughout".
+- Term absorption in `resolveAudiences` is pinned by a test rather than by a comment. The
+  suite passed with the call removed, which made the comment the only thing holding the
+  invariant up — and it is the kind of line that reads as a no-op, because `formatAudience`
+  absorbs as well, so the printed scope is identical either way and only the inherited term
+  count differs. Both this and the frontier's selector-based coverage were confirmed by
+  reverting each and watching the new tests fail.
 - New `src/audience.ts` and `test/audience.test.mjs`. Audience is held in disjunctive normal
   form: sets are closed under intersection and not under union, and inheritance below Context
   is a union, so a node carries a list of terms bounded by its distinct Context ancestors —

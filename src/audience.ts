@@ -147,12 +147,17 @@ export function resolveAudiences(graph: KnowledgeGraph): Map<string, Audience> {
     for (const parentId of graph.parents.get(id) ?? []) {
       for (const term of resolved.get(parentId) ?? []) seen.set(termKey(term, axes), term);
     }
-    // Absorb here rather than at the end. A term another term already covers
-    // would otherwise be copied into every node below it, so the disjunction
-    // grows down the graph while describing exactly the same people.
-    // A node with no resolvable parent serves nobody in particular rather than
-    // everybody: claiming the whole product from an absent lineage would be a
-    // scope nothing justified.
+    // Absorb HERE, where the term is produced — not in formatAudience, where it
+    // is printed. A redundant term is invisible at the surface either way, so
+    // moving this to the end reads as a no-op and is not: the term is inherited
+    // by every node below, and the disjunction grows down the graph while
+    // describing exactly the same people. Pinned by "a term another term already
+    // covers is absorbed where it is produced" in test/audience.test.mjs, which
+    // exists because the whole suite passed with this call removed.
+    //
+    // An empty union stays empty: a node with no resolvable parent serves nobody
+    // in particular rather than everybody, since claiming the whole product from
+    // an absent lineage would be a scope nothing justified.
     resolved.set(id, simplifyAudience([...seen.values()], axes));
   }
   return resolved;

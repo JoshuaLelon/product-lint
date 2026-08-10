@@ -109,6 +109,53 @@ test("a node resolves to no audience rather than to everyone when its lineage gi
   assert.ok(orphan.length > 0);
 });
 
+test("a term another term already covers is absorbed where it is produced", () => {
+  // The guard with teeth. formatAudience absorbs too, so the PRINTED scope is
+  // identical whether or not the resolver does — moving absorption to the end
+  // reads as a no-op and is not. The redundant term is inherited by every node
+  // below, so the disjunction grows down the graph while describing the same
+  // people. Written because the whole suite passed with the resolver's call
+  // removed, which made a comment the only thing holding the invariant up.
+  const graph = twoSetGraph([
+    {
+      id: "behavior.bulk-archive",
+      level: "behavior",
+      statement: "An administrator archives many documents at once.",
+      // "everyone" already covers "enterprise admins".
+      constrainedBy: ["product.current-version", "product.sso"],
+    },
+    {
+      id: "architecture.bulk-operations",
+      level: "architecture",
+      statement: "A batch runner applies one change to many documents.",
+      constrainedBy: ["behavior.bulk-archive"],
+    },
+    {
+      id: "mechanism.bulk-runner",
+      level: "mechanism",
+      statement: "A runner applies archive operations in batches.",
+      constrainedBy: ["architecture.bulk-operations"],
+      implementation: { files: ["src/bulk/**"], digest: "pending" },
+    },
+  ]);
+  const resolved = resolveAudiences(graph);
+  assert.equal(
+    resolved.get("behavior.bulk-archive").length,
+    1,
+    "everyone already covers enterprise admins, so the narrow term adds nobody",
+  );
+  assert.equal(
+    resolved.get("architecture.bulk-operations").length,
+    1,
+    "and a redundant term must not be inherited",
+  );
+  assert.equal(
+    resolved.get("mechanism.bulk-runner").length,
+    1,
+    "nor accumulate further down the graph",
+  );
+});
+
 test("DNF terms are bounded by Context ancestors, never by the size of the product", () => {
   const graph = twoSetGraph();
   const resolved = resolveAudiences(graph);
