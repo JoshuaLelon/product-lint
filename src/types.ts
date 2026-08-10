@@ -136,52 +136,6 @@ export interface ValidationResult {
   diagnostics: Diagnostic[];
 }
 
-/**
- * The properties the graph is measured against, in dependency order.
- *
- * Kept few and kept decidable. Four scored candidates were built as far as
- * measurement and dropped, each against real graphs of 44 and 80 nodes:
- *
- *   correspondence between statement text and governed files — needs variation
- *     in the file-set distances to correlate against, and there is none. A
- *     branch that never re-merges gives siblings disjoint extents by tree shape
- *     alone; a graph with few Mechanism nodes gives them identical ones. Both
- *     shapes occur, and neither is measurable.
- *   vocabulary drift — two thirds of content terms appear at exactly one node,
- *     so "appears once" says nothing, and the near-matches are English.
- *   clause splitting — a coordinating conjunction appears in 76% to 84% of
- *     statements. The exact checks it was meant to extend survive; it did not.
- *   near-duplicate siblings — zero true positives and two false positives
- *     across 99 real sibling pairs, one of which was the approve/reject shape
- *     the rule is specifically supposed to allow.
- *
- * A band that cannot separate anything is not a band. Measure before adding one.
- */
-export const BAND_NAMES = ["STRUCTURE", "COVERAGE", "OVERLAP"] as const;
-export type BandName = (typeof BAND_NAMES)[number];
-
-/** Why a band could not be measured. Never a number, so it can never read as zero. */
-export type MaskReason = { band: BandName } | { rule: string };
-
-export type BandState =
-  | { kind: "clean" }
-  | { kind: "measured"; residual: number }
-  | { kind: "masked"; by: MaskReason };
-
-export interface Band {
-  name: BandName;
-  title: string;
-  state: BandState;
-  /** Ranked evidence for the residual. Empty unless the band was measured. */
-  findings: Diagnostic[];
-}
-
-export interface Spectrum {
-  snapshot: SnapshotKind;
-  /** Always BAND_NAMES.length entries, always in BAND_NAMES order. */
-  bands: Band[];
-}
-
 export interface FrontierResult {
   complete: boolean;
   diagnostics: Diagnostic[];

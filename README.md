@@ -378,9 +378,7 @@ bind to files, so at that level the repository settles the question — see `PL0
 it the rule stays an instruction, because nothing there can be checked without judging what two
 sentences mean.
 
-## Shape
-
-### Overlap
+## Overlapping mechanisms
 
 Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
 has an answer the repository can give:
@@ -397,42 +395,6 @@ has one Mechanism owner.
 This is an error, not a question, on the same standard as `PL0502`: a claim the repository
 disproves. Two globs that *could* both match are not enough — the snapshot must actually hold a
 file they both match, or there is no evidence.
-
-### The spectrum
-
-```bash
-npx product-lint spectrum
-```
-
-```text
-Product Lint spectrum (working tree)
-  STRUCTURE  clean
-  COVERAGE   measured(317)
-  OVERLAP    masked by STRUCTURE
-```
-
-Each property is counted on its own. A property that could not be measured reports **masked**
-and carries no number — never zero. A count nobody took and a count that came back zero are
-different facts, and printing one for the other is how a tool reports success over work it never
-looked at.
-
-### The ratchet
-
-```bash
-npx product-lint accept --reason "narrowed governedPaths to src/billing/**"
-```
-
-That records the current counts in `.product-lint/baseline.json`. From then on a commit that
-makes any property worse fails with `PL0901 BAND_REGRESSION`.
-
-Held per property, never summed. A single score would let a commit that closes two coverage gaps
-pay for the overlap it opens, and separating them is the whole point of counting them apart.
-Lowering the floor is free; raising it needs `--allow-regression` and puts your stated reason in
-a committed file where review can see it.
-
-A property that was masked when the floor was set is never compared against it. An unknown is not
-a regression from zero, and treating it as one would punish the commit that made the graph
-measurable — which is the commit that did the most good.
 
 ## Reference JSON
 
@@ -465,8 +427,6 @@ product-lint init [--force]
 product-lint validate [--json]
 product-lint check [--json]
 product-lint frontier [--json]
-product-lint spectrum [--json]
-product-lint accept --reason <why> [--allow-regression]
 product-lint ship [--json]
 product-lint knowledge for-file <path> [--json]
 product-lint knowledge affected-by <node-id> [--json]

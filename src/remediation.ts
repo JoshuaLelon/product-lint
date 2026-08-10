@@ -30,25 +30,6 @@ const FIXES: Record<string, string> = {
   "PL0602 UNGOVERNED_TREE":
     "Do not create a Mechanism node yet. A Mechanism node needs an Architecture parent, and that level does not exist, so this repository must build the missing levels downward first. Start at the level named in requiredLevel and put the question below to the user. The tree below is every governed file with no owner, which is the size of the job inside the current governedPaths.include. If this repository had code before it had Product Lint, narrow that glob to the area you are modelling now, and widen it as each Mechanism node lands.",
 
-  // Ratchet. Counts of facts, held per band, never summed — a total lets a gain
-  // in one property pay for a loss in another.
-  "PL0901 BAND_REGRESSION":
-    "This commit made a measured property worse. Fix the entries in details.files, or, if the rise is deliberate, run product-lint accept --reason \"<why>\" --allow-regression to raise the floor on the record.",
-  "PL0902 MISSING_BASELINE":
-    "Run product-lint accept --reason \"<why this is the floor>\" on a clean tree to record the current counts. Until then nothing can detect a regression.",
-  "PL0903 BAND_NOW_MEASURABLE":
-    "Nothing is wrong. The band could not be measured when the floor was set and now can, so run product-lint accept to record its first real number.",
-  "PL0904 BAND_LOST_MEASURABILITY":
-    "A property that used to be measurable no longer is, which usually means an earlier band it depends on regressed. Fix that band first; this one returns with it.",
-  "PL0906 UNEXPLAINED_ACCEPT":
-    "Pass --reason \"<why>\". The reason is stored in the baseline file and shows up in review, which is what makes raising a floor a decision somebody made rather than a number that drifted.",
-  "PL0907 DIRTY_ACCEPT_TREE":
-    "Commit or stash the working tree first. A floor measured from uncommitted work is not a floor anyone else can reproduce.",
-  "PL0908 UNDECLARED_RAISE":
-    "This would record a worse floor than the one already on file. Fix the regression, or, if it is deliberate, pass --allow-regression along with the reason.",
-  "PL0905 BAND_IMPROVED":
-    "Nothing is wrong. Run product-lint accept --reason \"<what closed>\" to lower the floor so the gain cannot be given back.",
-
   // Shipping
   "PL0701 DIRTY_SHIP_TREE":
     "Commit or stash every change, then run product-lint ship again.",

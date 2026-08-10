@@ -13,8 +13,6 @@ import { synchronizeStaged } from "./sync.js";
 import { checkCommitMessage, checkStagedCommit } from "./commit.js";
 import { initProject } from "./init.js";
 import { isWorkingTreeDirty } from "./git.js";
-import { formatSpectrum } from "./spectrum.js";
-import { acceptBaseline, compareToBaseline, readBaseline } from "./baseline.js";
 
 function usage(): string {
   return `Product Lint
@@ -24,8 +22,6 @@ Usage:
   product-lint validate [--json]
   product-lint check [--json]
   product-lint frontier [--json]
-  product-lint spectrum [--json]
-  product-lint accept --reason <why> [--allow-regression]
   product-lint ship [--json]
   product-lint knowledge for-file <path> [--json]
   product-lint knowledge affected-by <node-id> [--json]
@@ -135,65 +131,14 @@ async function main(): Promise<void> {
         stringifyJson({
           complete: status.frontier.complete && !dirty,
           diagnostics: annotateDiagnostics(all),
-          spectrum: status.spectrum,
           ...(command === "ship" ? { dirty } : {}),
         }),
       );
     } else {
       process.stdout.write(formatDiagnostics(all));
-      if (command !== "frontier") process.stdout.write(`\n${formatSpectrum(status.spectrum)}`);
     }
     if (hasErrors([...structural, ...sync, ...shipDiagnostics])) process.exitCode = 1;
     else if (!status.frontier.complete) process.exitCode = 2;
-    return;
-  }
-
-  if (command === "spectrum") {
-    const parsed = parseCommon(rest);
-    const config = await loadConfig(process.cwd(), parsed.values.config);
-    const status = await inspectWorkingTree(config);
-    const baseline = await readBaseline(config.root);
-    const ratchet = compareToBaseline(status.spectrum, baseline, { announceMissing: true });
-    if (parsed.values.json) {
-      console.log(
-        stringifyJson({ spectrum: status.spectrum, diagnostics: annotateDiagnostics(ratchet) }),
-      );
-    } else {
-      process.stdout.write(formatSpectrum(status.spectrum));
-      if (ratchet.length > 0) process.stdout.write(`\n${formatDiagnostics(ratchet)}`);
-    }
-    if (hasErrors(ratchet)) process.exitCode = 1;
-    // A masked band is unmeasured work, not a clean result. Reporting it as
-    // success is exactly the failure this vector exists to make unstateable.
-    else if (status.spectrum.bands.some((band) => band.state.kind !== "clean")) {
-      process.exitCode = 2;
-    }
-    return;
-  }
-
-  if (command === "accept") {
-    const parsed = parseArgs({
-      args: rest,
-      options: {
-        config: { type: "string" },
-        json: { type: "boolean", default: false },
-        reason: { type: "string" },
-        "allow-regression": { type: "boolean", default: false },
-        help: { type: "boolean", default: false },
-      },
-      strict: true,
-    });
-    const config = await loadConfig(process.cwd(), parsed.values.config);
-    const result = await acceptBaseline(config, {
-      reason: parsed.values.reason,
-      allowRegression: parsed.values["allow-regression"],
-    });
-    if (parsed.values.json) console.log(stringifyJson(result));
-    else {
-      process.stdout.write(formatDiagnostics(result.diagnostics));
-      if (result.written) console.log(`recorded ${result.written}`);
-    }
-    if (hasErrors(result.diagnostics)) process.exitCode = 1;
     return;
   }
 

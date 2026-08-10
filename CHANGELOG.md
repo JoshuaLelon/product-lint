@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.0
+
+Removes the spectrum and the ratchet, which 0.5.0 added and nothing needed.
+
+- `product-lint spectrum`, `product-lint accept`, `.product-lint/baseline.json`, and diagnostics
+  `PL0901` through `PL0908` are gone. The ratchet counted three things and refused a commit that
+  raised any of them. All three were already errors that already refused the commit: an
+  unowned staged file is `PL2101`, an overlapping Mechanism is `PL0603`, and a graph that does
+  not build stops `commit check` before it reaches anything else. The ratchet re-detected what
+  the validator had already caught, and said it worse — "COVERAGE went 0 to 1" names no file and
+  no repair, where `PL2101` names both.
+- A ratchet earns its place against a measurement too soft to block on, which is what it was
+  designed for. Those measurements were dropped in 0.6.0 for firing on most of every real graph,
+  and the scaffolding outlived the thing it was holding up.
+- The staged and head snapshots no longer filter `.product-lint/`. That filter existed to keep a
+  committed baseline from governing itself, and there is no baseline now.
+- `PL0603 OVERLAPPING_MECHANISM` is unaffected. It is the one check from this line of work that
+  decides something nothing else decides.
+
 ## 0.6.0
 
 Removes cohort attestation, which 0.5.0 added one release earlier.
