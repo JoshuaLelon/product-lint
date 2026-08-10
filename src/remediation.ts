@@ -25,6 +25,8 @@ const FIXES: Record<string, string> = {
     "Remove the entry from implementation.files, or correct it to the path the file has now. Then run product-lint knowledge sync --staged.",
   "PL0601 UNMAPPED_FILE":
     "Add this path to implementation.files on the Mechanism node that owns it, or create a new Mechanism node for it. Then run product-lint knowledge sync --staged.",
+  "PL0602 UNGOVERNED_TREE":
+    "Do not create a Mechanism node yet. A Mechanism node needs an Architecture parent, and that level does not exist, so this repository must build the missing levels downward first. Start at the level named in requiredLevel and put the question below to the user. The tree below is every governed file with no owner, which is the size of the job inside the current governedPaths.include. If this repository had code before it had Product Lint, narrow that glob to the area you are modelling now, and widen it as each Mechanism node lands.",
 
   // Shipping
   "PL0701 DIRTY_SHIP_TREE":
@@ -109,6 +111,8 @@ const FIXES: Record<string, string> = {
     "This node holds a new digest but no input changed. Restore it with git checkout HEAD -- <path>, then stage the real cause.",
   "PL2105 FORMAT_ONLY_NODE_CHANGE":
     "Only whitespace or key order changed. Run product-lint knowledge sync --staged to rewrite the file in canonical form, or restore it with git checkout HEAD -- <path>.",
+  "PL2106 UNGOVERNED_IMPLEMENTATION":
+    "Do not create a Mechanism node yet. A Mechanism node needs an Architecture parent, and that level does not exist, so this repository must build the missing levels downward first. Start at the level named in requiredLevel and put the question below to the user. If this repository had code before it had Product Lint, narrow governedPaths.include in product-lint.config.json to the area you are modelling now, and widen it as each Mechanism node lands. See details.files for what is currently ungoverned.",
 
   // Commit message
   "PL2201 DUPLICATE_KNOWLEDGE_TRAILER":
@@ -147,6 +151,9 @@ const ASK_CODES = new Set([
   "PL0201 MISSING_BEHAVIOR",
   "PL0301 MISSING_ARCHITECTURE",
   "PL0401 MISSING_MECHANISM",
+  // Carry a frontier question of their own, so they need the same ask formats.
+  "PL2106 UNGOVERNED_IMPLEMENTATION",
+  "PL0602 UNGOVERNED_TREE",
 ]);
 
 /**
@@ -167,6 +174,8 @@ const STYLE_CODES = new Set([
   "PL1009 MISSING_STATEMENT",
   "PL1204 INCOMPLETE_REFERENCE",
   "PL2204 MISSING_KNOWLEDGE_REASON",
+  "PL2106 UNGOVERNED_IMPLEMENTATION",
+  "PL0602 UNGOVERNED_TREE",
 ]);
 
 export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {

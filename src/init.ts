@@ -76,24 +76,47 @@ async function configureLefthook(root: string, result: InitResult): Promise<void
     return;
   }
 
-  const additions: string[] = [];
-  if (!/^pre-commit:/m.test(current)) additions.push(PRE_COMMIT_BLOCK);
-  if (!/^commit-msg:/m.test(current)) additions.push(COMMIT_MSG_BLOCK);
+  // A hook this file already defines cannot be appended to, because a duplicate
+  // top-level key is not merged — the second one wins and the project's own jobs
+  // would be lost. So each hook is either appended whole or handed back as a
+  // manual step, and the two decisions are INDEPENDENT. They used to share one
+  // branch: the manual note was printed only when BOTH hooks already existed, so
+  // a project with a pre-commit block and no commit-msg block got the commit-msg
+  // block appended, got no note, and never learned that its pre-commit commands
+  // were never wired. init then printed a success list over a half-install.
+  const hooks: Array<{ present: boolean; block: string; manual: string[] }> = [
+    {
+      present: /^pre-commit:/m.test(current),
+      block: PRE_COMMIT_BLOCK,
+      manual: [
+        "  pre-commit:  npx product-lint knowledge sync --staged && git add docs/",
+        "  pre-commit:  npx product-lint commit check --staged",
+      ],
+    },
+    {
+      present: /^commit-msg:/m.test(current),
+      block: COMMIT_MSG_BLOCK,
+      manual: ["  commit-msg:  npx product-lint commit message {1}"],
+    },
+  ];
 
-  if (additions.length === 0) {
+  const additions = hooks.filter((hook) => !hook.present).map((hook) => hook.block);
+  const manual = hooks.filter((hook) => hook.present).flatMap((hook) => hook.manual);
+
+  if (additions.length > 0) {
+    const separator = current.endsWith("\n") ? "\n" : "\n\n";
+    await writeFile(target, `${current}${separator}${additions.join("\n")}`, "utf8");
+    result.created.push(`${target} (appended)`);
+  } else {
     result.skipped.push(target);
-    result.notes.push(
-      `${path.basename(target)} already defines pre-commit and commit-msg. Add these commands manually:\n` +
-        `  pre-commit:  npx product-lint knowledge sync --staged && git add docs/\n` +
-        `  pre-commit:  npx product-lint commit check --staged\n` +
-        `  commit-msg:  npx product-lint commit message {1}`,
-    );
-    return;
   }
 
-  const separator = current.endsWith("\n") ? "\n" : "\n\n";
-  await writeFile(target, `${current}${separator}${additions.join("\n")}`, "utf8");
-  result.created.push(`${target} (appended)`);
+  if (manual.length > 0) {
+    result.notes.push(
+      `${path.basename(target)} already defines these hooks, so Product Lint did not touch them.\n` +
+        `NOT INSTALLED until you add these commands yourself:\n${manual.join("\n")}`,
+    );
+  }
 }
 
 /**
@@ -104,10 +127,60 @@ async function installLefthookHooks(root: string, result: InitResult): Promise<v
   try {
     await run("npx", ["--no-install", "lefthook", "install"], { cwd: root });
     result.notes.push("Installed Git hooks via lefthook.");
+    return;
+  } catch (error) {
+    // Never replace lefthook's own words with a guess. This used to report every
+    // failure as "install lefthook", which is a WRONG DIAGNOSIS in the common
+    // case: a repository with core.hooksPath set already has lefthook, and
+    // lefthook refuses that path and prints the exact flag that fixes it. A tool
+    // that tells every diagnostic to name its repair may not throw away the one
+    // repair it was handed.
+    const detail = [
+      (error as { stderr?: string }).stderr,
+      (error as { stdout?: string }).stdout,
+    ]
+      .filter((stream): stream is string => Boolean(stream?.trim()))
+      .join("\n")
+      .trim();
+
+    const lines = ["Could not install the Git hooks. lefthook said:"];
+    lines.push(detail ? detail : String(error));
+    if (/hooksPath/i.test(detail)) {
+      lines.push(
+        "This repository sets core.hooksPath, so lefthook will not install without being told to.",
+        "Run: npx lefthook install --force",
+      );
+    } else {
+      lines.push("If lefthook is missing, run: npm install --save-dev lefthook");
+    }
+    lines.push("The hooks are NOT installed until that command succeeds.");
+    result.notes.push(lines.join("\n"));
+  }
+}
+
+/**
+ * A hook block in lefthook.yml does nothing until a hook script exists in the
+ * repository's hooks path. Both halves failed independently on a real install:
+ * the block was written, the script was missing, and init printed a success
+ * list over a hook that could never fire.
+ */
+async function verifyHookScripts(root: string, result: InitResult): Promise<void> {
+  let hooksPath = ".git/hooks";
+  try {
+    const { stdout } = await run("git", ["config", "--get", "core.hooksPath"], { cwd: root });
+    if (stdout.trim()) hooksPath = stdout.trim();
   } catch {
+    // Unset is the normal case, and the default above already covers it.
+  }
+
+  const missing: string[] = [];
+  for (const hook of ["pre-commit", "commit-msg"]) {
+    if (!(await exists(path.resolve(root, hooksPath, hook)))) missing.push(hook);
+  }
+  if (missing.length > 0) {
     result.notes.push(
-      "Could not run lefthook automatically. Install it, then run: npx lefthook install\n" +
-        "  npm install --save-dev lefthook",
+      `No hook script at ${hooksPath}/{${missing.join(",")}}, so ${missing.length === 1 ? "that hook" : "those hooks"} cannot run.\n` +
+        "Run: npx lefthook install --force",
     );
   }
 }
@@ -153,5 +226,6 @@ export async function initProject(root: string, force = false): Promise<InitResu
   }
 
   await installLefthookHooks(root, result);
+  await verifyHookScripts(root, result);
   return result;
 }

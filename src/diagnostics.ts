@@ -1,5 +1,6 @@
 import type { Diagnostic } from "./types.js";
 import { annotateDiagnostic } from "./remediation.js";
+import { renderTree } from "./tree.js";
 
 export function hasErrors(diagnostics: Diagnostic[]): boolean {
   return diagnostics.some((diagnostic) => diagnostic.severity === "error");
@@ -39,6 +40,17 @@ export function formatDiagnostic(input: Diagnostic): string {
   if (diagnostic.ask) lines.push(wrap("ask", diagnostic.ask));
   if (diagnostic.style) lines.push(wrap("style", diagnostic.style));
   if (diagnostic.command) lines.push(`  run: ${diagnostic.command}`);
+  // A diagnostic that speaks for many files must name them. The tree is the
+  // readable form of that list, and it is the difference between "something in
+  // src is ungoverned" and knowing which directory holds the work.
+  const files = diagnostic.details?.files;
+  if (Array.isArray(files) && files.length > 0) {
+    const tree = renderTree(files.filter((file): file is string => typeof file === "string"));
+    if (tree) {
+      lines.push(`  files (${files.length}):`);
+      for (const line of tree.split("\n")) lines.push(`    ${line}`);
+    }
+  }
   return lines.join("\n");
 }
 

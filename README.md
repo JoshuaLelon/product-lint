@@ -27,6 +27,10 @@ adds Product Lint's `pre-commit` and `commit-msg` commands to your Lefthook conf
 (creating it, or appending to an existing one), and installs the Git hooks. Running it
 twice is safe.
 
+`init` will not edit a hook your Lefthook config already defines, because a duplicate
+top-level key would shadow your own jobs. It prints the commands it skipped, and they are
+not installed until you add them. Read what `init` prints; it reports what it did not do.
+
 `product-lint check` exits with:
 
 ```text
@@ -37,6 +41,58 @@ twice is safe.
 
 An empty repository therefore produces a machine-readable `MISSING_CONTEXT` diagnostic
 rather than encouraging an agent to start from implementation.
+
+## Adopting into a repository that already has code
+
+Product Lint reads top-down, and an existing repository is the one case where the code
+arrived first. `governedPaths.include` is the control.
+
+Every changed governed file must resolve to a Mechanism node. A repository with a thousand
+files and no knowledge therefore cannot commit anything inside `src/**` until the spine
+reaches Mechanism — and the spine starts at Context, which only the user can answer.
+`PL2106 UNGOVERNED_IMPLEMENTATION` names that, once, instead of demanding a Mechanism node
+per file that `PL1104` would then reject.
+
+So narrow the glob to the area you are modelling now:
+
+```json
+{
+  "governedPaths": {
+    "include": ["src/billing/**"]
+  }
+}
+```
+
+Build Context down to Mechanism for that area, widen the glob, repeat. The alternative —
+governing everything on day one — makes a correct tree uncommittable, and what people learn
+from that is `--no-verify`, which skips every other check in the hook as well.
+
+`frontier` shows the size of the job inside the current glob:
+
+```bash
+npx product-lint frontier
+```
+
+While the graph has no Architecture level, every ungoverned file shares one cause and one
+repair, so they arrive as a single `PL0602 UNGOVERNED_TREE` with the list rendered as a
+tree:
+
+```text
+PL0602 UNGOVERNED_TREE 317 governed file(s) have no Mechanism owner, and no Mechanism node
+can own them yet because the graph has no context level.
+  files (317):
+    (by directory, because the list is long)
+    scripts/  19 files
+    src/  298 files, 8 here
+      components/  85 files, 77 here
+      lib/  102 files, 14 here
+        ai/  88 files, 8 here
+      store/  43 files, 34 here
+```
+
+`N files, M here` separates the whole branch from what one Mechanism node in that directory
+would have to own. Once an Architecture node exists, each file gets its own
+`PL0601 UNMAPPED_FILE` again, because from then on the repair is per-file.
 
 ## Repository model
 
@@ -325,7 +381,10 @@ product-lint commit check --staged [--json]
 product-lint commit message <commit-message-file> [--json]
 product-lint llms for-file <path>
 product-lint llms affected-by <node-id>
+product-lint help
 ```
+
+`--help` works on any command, and prints usage instead of running it.
 
 ## Scope
 

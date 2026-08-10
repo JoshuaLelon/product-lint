@@ -16,6 +16,7 @@ import {
   nodeFingerprint,
   semanticFingerprint,
 } from "./graph.js";
+import { LEVEL_AUTHORITY, firstAbsentLevel } from "./frontier.js";
 import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { stagedChanges } from "./git.js";
@@ -136,6 +137,19 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
     ...nodeChanges.deleted,
   ]);
 
+  // "Create a Mechanism node for this file" is a legal instruction only when the
+  // graph has an Architecture level to hang one from. PL1104 forbids a parentless
+  // Mechanism, so on a graph that stops short of Architecture the advice below
+  // sent an agent to build a node this same validator then rejected — once per
+  // file. A repository that adopts Product Lint with code already in it hits
+  // exactly that, N times, and the one true next action (ask about Context) is
+  // absent from the output entirely. So when the level cannot exist yet, collect
+  // the files and report the frontier once, after the loop.
+  const canOwnMechanism = [...stagedValidation.graph.nodes.values()].some(
+    (node) => node.level === "architecture",
+  );
+  const ungoverned: string[] = [];
+
   for (const change of changedImplementationFiles) {
     const paths = [change.path, ...(change.oldPath ? [change.oldPath] : [])];
     const owners = new Map<string, SourceCanonicalNode>();
@@ -144,6 +158,10 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
       for (const owner of ownersForFile(stagedValidation.graph, file)) owners.set(owner.id, owner);
     }
     if (owners.size === 0) {
+      if (!canOwnMechanism) {
+        ungoverned.push(change.path);
+        continue;
+      }
       diagnostics.push({
         code: "PL2101 UNMAPPED_STAGED_FILE",
         severity: "error",
@@ -167,6 +185,24 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
         });
       }
     }
+  }
+
+  if (ungoverned.length > 0) {
+    const level = firstAbsentLevel(stagedValidation.graph) ?? "architecture";
+    const authority = LEVEL_AUTHORITY[level];
+    diagnostics.push({
+      code: "PL2106 UNGOVERNED_IMPLEMENTATION",
+      severity: "error",
+      message:
+        `${ungoverned.length} staged file(s) have no Mechanism owner, and no Mechanism node can ` +
+        `own them yet because the graph has no ${level} level.`,
+      requiredLevel: level,
+      action: authority.action,
+      infer: authority.infer,
+      question: authority.question,
+      expectedPath: `docs/${level}/*.json`,
+      details: { files: [...ungoverned].sort() },
+    });
   }
 
   for (const id of nodeChanges.semantic) {

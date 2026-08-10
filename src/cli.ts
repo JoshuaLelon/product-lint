@@ -77,6 +77,13 @@ async function main(): Promise<void> {
     console.log(usage());
     return;
   }
+  // `help` was a declared option that nothing read, so `product-lint check
+  // --help` loaded the config and ran the check instead. Asking what a command
+  // does is never a request to do it.
+  if (rest.some((argument) => argument === "--help" || argument === "-h")) {
+    console.log(usage());
+    return;
+  }
 
   if (command === "init") {
     const parsed = parseCommon(rest);
