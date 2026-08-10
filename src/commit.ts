@@ -21,6 +21,9 @@ import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { stagedChanges } from "./git.js";
 import { expectedSynchronizedNodes, synchronizationDiagnostics } from "./sync.js";
+import { computeSpectrum } from "./spectrum.js";
+import { compareToBaseline, readBaseline } from "./baseline.js";
+import { attestationDiagnostics, loadAttestations } from "./attest.js";
 
 function emptyClassification(): NodeChangeClassification {
   return {
@@ -261,6 +264,24 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
       });
     }
   }
+
+  // The ratchet, measured on the staged tree because that is the tree about to
+  // become history. Per band and never summed: a total would let a commit that
+  // closes two coverage gaps pay for the overlap it introduces, and separating
+  // those is the whole reason the measurement is a vector.
+  const spectrum = computeSpectrum({
+    config,
+    snapshot: stagedSnapshot,
+    graph: stagedValidation.graph,
+    diagnostics: stagedValidation.diagnostics,
+  });
+  diagnostics.push(...compareToBaseline(spectrum, await readBaseline(config.root)));
+
+  const attestations = await loadAttestations(config, stagedSnapshot);
+  diagnostics.push(
+    ...attestations.diagnostics,
+    ...attestationDiagnostics(config, stagedValidation.graph, attestations.attestations),
+  );
 
   return { diagnostics, nodeChanges, changedImplementationFiles };
 }

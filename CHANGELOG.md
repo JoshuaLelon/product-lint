@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.5.0
+
+Shape, enforced where it is decidable and recorded where it is not. A level is meant to be a set
+of nodes that do not overlap. Between two statements that has no test. Between two Mechanism
+nodes it has one, because a Mechanism binds to files.
+
+- New `PL0603 OVERLAPPING_MECHANISM`, an error, when two Mechanism nodes resolve to the same
+  file. This is evidence, not a reading, and it is held to the standard `PL0502` already meets.
+  When one node's files sit entirely inside another's the message says so, because the repair is
+  a merge rather than a re-partition. **This can fail a repository that passed 0.4.0.** Ambiguous
+  ownership was always a defect; nothing named it. It also has a cost the tool never explained:
+  `commit check` requires every owner of a changed file to be staged, so a file with two owners
+  silently doubled the `PL2102` burden.
+- New `product-lint spectrum`, reporting each measured property as its own number. A property
+  that could not be measured reports as masked and carries no number at all — never zero. The two
+  are different facts, and a tool that prints one for the other reports success over work it
+  never looked at. `check` and `ship` print the same vector as a footer.
+- New `product-lint accept --reason "<why>"`, recording the current counts as a floor in
+  `.product-lint/baseline.json`, and a check at commit time that no property got worse. Held per
+  property and never summed: a total would let a commit that closes two coverage gaps pay for the
+  overlap it opens. Lowering the floor is free. Raising it needs `--allow-regression` and lands
+  the stated reason in a committed file, where review can see it. `accept` refuses on a dirty
+  tree, and the hook never writes the baseline — a step that rewrites a committed file behind the
+  author is not a record of anything.
+- New cohort attestation. A cohort is the children of one parent at one level, which is the unit
+  at which exclusivity is a question at all. Its digest covers member ids and their semantic
+  fingerprints, so it moves when a member is added or restated and stays put when a digest
+  elsewhere is resynchronized. A cohort with no recorded review, or one that changed since its
+  last review, is reported — `info` during `check` and `commit check`, `error` at `ship`. The
+  tool never learns what the reviewer concluded, only whether they read this text. On by default
+  at product, behavior, and architecture; set `attest.levels` to `[]` to turn it off. Mechanism
+  is excluded because `PL0603` already decides the part of it that files can settle.
+- `NODE_SHAPE` and `STATEMENT_STYLE` now ride the two attestation diagnostics. Everywhere else
+  the shape rule arrives before a node is written; here it arrives with the whole set in front of
+  the reader, which is the only position the rule can actually be applied from.
+- Glob patterns compile once and are reused. Matching is the hot path, and a Mechanism list
+  checked against a large snapshot recompiled the same few patterns once per file. The test suite
+  runs in roughly half the time.
+- The exhaustive-fix test now walks `src/` recursively. It read one directory level, so a
+  diagnostic declared in a subdirectory would have shipped with no repair text and nothing would
+  have failed.
+
 ## 0.4.0
 
 Shape. A tool that tells an agent to create a node, and does not say what a node should be,

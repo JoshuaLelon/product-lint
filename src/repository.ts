@@ -39,7 +39,16 @@ export async function createSnapshot(
     };
   }
 
-  const files = kind === "staged" ? await listIndexFiles(config.root) : await listHeadFiles(config.root);
+  // Git lists what it tracks, so the skip list the working walk applies has to
+  // be applied here too. It matters now that the baseline is a committed file:
+  // measuring the repository must not change what the repository contains, and
+  // a snapshot that sees .product-lint/ makes the floor governable, hashable
+  // into an implementation digest, and able to move its own number.
+  const tracked =
+    kind === "staged" ? await listIndexFiles(config.root) : await listHeadFiles(config.root);
+  const files = tracked.filter(
+    (file) => !normalizePath(file).split("/").some((segment) => SKIP_DIRECTORIES.has(segment)),
+  );
   const set = new Set(files);
   return {
     kind,

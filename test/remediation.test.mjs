@@ -8,10 +8,24 @@ import {
   STATEMENT_STYLE,
 } from "../dist/index.js";
 
+// Recursive on purpose. A flat readdir made the exhaustive-fix guarantee depend
+// on src/ never gaining a subdirectory, and a code declared one level down would
+// have escaped the check silently — the failure mode being a shipped diagnostic
+// that tells an agent nothing about the repair.
+function sourceFiles(directory) {
+  const files = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const full = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) files.push(...sourceFiles(full));
+    else if (entry.name.endsWith(".ts")) files.push(full);
+  }
+  return files;
+}
+
 function declaredCodes() {
   const codes = new Set();
-  for (const file of readdirSync("src").filter((name) => name.endsWith(".ts"))) {
-    const text = readFileSync(`src/${file}`, "utf8");
+  for (const file of sourceFiles("src")) {
+    const text = readFileSync(file, "utf8");
     for (const match of text.matchAll(/code:\s*"(PL\d+ [A-Z_]+)"/g)) codes.add(match[1]);
   }
   // Emitted by the shared frontier template rather than a literal code field.

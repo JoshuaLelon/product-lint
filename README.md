@@ -103,6 +103,7 @@ docs/
 ├── behavior/
 ├── architecture/
 ├── mechanism/
+├── attest/
 └── reference/
 ```
 
@@ -373,6 +374,105 @@ well as `style`, for a sharper reason than convenience: that view is a *slice*, 
 lineage and never a level, which is the exact position from which a duplicate sibling gets
 written.
 
+Two parts of the rule *are* decidable, and those are enforced rather than instructed. Where two
+nodes bind to the same file, the file settles it — see `PL0603` below. Where they do not, the
+tool cannot judge the overlap, but it can decide whether anybody has read the level since it
+last changed — see [Reviewing a level](#reviewing-a-level).
+
+## Shape
+
+### Overlap
+
+Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
+has an answer the repository can give:
+
+```text
+PL0603 OVERLAPPING_MECHANISM mechanism.b claims every file mechanism.a claims. A governed file
+has one Mechanism owner.
+  fix: Decide which Mechanism owns the shared files and narrow the other node's
+       implementation.files so each governed file has exactly one owner. If neither node owns
+       them alone because the two say the same thing, delete one and give the survivor both
+       parents — a node is allowed many parents.
+```
+
+This is an error, not a question, on the same standard as `PL0502`: a claim the repository
+disproves. Two globs that *could* both match are not enough — the snapshot must actually hold a
+file they both match, or there is no evidence.
+
+### The spectrum
+
+```bash
+npx product-lint spectrum
+```
+
+```text
+Product Lint spectrum (working tree)
+  STRUCTURE  clean
+  COVERAGE   measured(317)
+  OVERLAP    masked by STRUCTURE
+```
+
+Each property is counted on its own. A property that could not be measured reports **masked**
+and carries no number — never zero. A count nobody took and a count that came back zero are
+different facts, and printing one for the other is how a tool reports success over work it never
+looked at.
+
+### The ratchet
+
+```bash
+npx product-lint accept --reason "narrowed governedPaths to src/billing/**"
+```
+
+That records the current counts in `.product-lint/baseline.json`. From then on a commit that
+makes any property worse fails with `PL0901 BAND_REGRESSION`.
+
+Held per property, never summed. A single score would let a commit that closes two coverage gaps
+pay for the overlap it opens, and separating them is the whole point of counting them apart.
+Lowering the floor is free; raising it needs `--allow-regression` and puts your stated reason in
+a committed file where review can see it.
+
+A property that was masked when the floor was set is never compared against it. An unknown is not
+a regression from zero, and treating it as one would punish the commit that made the graph
+measurable — which is the commit that did the most good.
+
+### Reviewing a level
+
+A **cohort** is the children of one parent at one level. That is the unit at which exclusivity is
+a question at all: two children of the same parent are required not to overlap, and two nodes
+answering different parents are not.
+
+The tool cannot decide whether two statements overlap. It can decide whether anyone has read them
+together since they last changed, which is the same move `sync.constraintsDigest` already makes
+for derived state, applied to a judgement instead of a field:
+
+```json
+{
+  "cohort": "product.current-version/behavior",
+  "digest": "sha256:product-lint-cohort-v1:...",
+  "reviewedFor": ["exclusive", "exhaustive"],
+  "note": "Approve, reject, and comment are the three transitions the product rule permits."
+}
+```
+
+Store it in `docs/attest/`. The digest covers member ids and their statements, so it moves when a
+member is added or restated and stays put when a digest elsewhere is resynchronized — re-reviewing
+a level because an unrelated file changed is how a review requirement becomes a rubber stamp.
+
+The `note` is the review. Naming the principle that divides the nodes is the part that cannot be
+written without reading them, and it is held to the same `style` rule as any other statement.
+
+Reported as `info` during `check` and `commit check`, and as an error at `ship`. An open question
+never blocks a commit; a level nobody has read since it changed does block a release. On by
+default at product, behavior, and architecture. Turn it off with:
+
+```json
+{ "attest": { "levels": [] } }
+```
+
+Mechanism is excluded by default because `PL0603` already decides the part of it that files can
+settle, and Mechanism cohorts are the largest, so asking there costs the most attention for the
+least it can add.
+
 ## Reference JSON
 
 `docs/reference/*.json` stores non-canonical institutional memory. References do not
@@ -404,6 +504,8 @@ product-lint init [--force]
 product-lint validate [--json]
 product-lint check [--json]
 product-lint frontier [--json]
+product-lint spectrum [--json]
+product-lint accept --reason <why> [--allow-regression]
 product-lint ship [--json]
 product-lint knowledge for-file <path> [--json]
 product-lint knowledge affected-by <node-id> [--json]

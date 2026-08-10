@@ -8,6 +8,7 @@ import type {
 import { buildKnowledgeGraph, loadCanonicalNodes } from "./graph.js";
 import { loadReferences } from "./references.js";
 import { matchesGlob, normalizePath } from "./glob.js";
+import { overlappingMechanisms } from "./overlap.js";
 
 const GLOB_METACHARACTERS = /[*?{]/;
 
@@ -84,6 +85,7 @@ export async function validateSnapshot(
   const built = buildKnowledgeGraph(loaded.nodes);
   const references = await loadReferences(config, snapshot, built.graph);
   const implementation = built.graph ? deadImplementationPaths(built.graph, snapshot) : [];
+  const overlap = built.graph ? overlappingMechanisms(built.graph, snapshot) : [];
   return {
     ...(built.graph ? { graph: built.graph } : {}),
     references: references.references,
@@ -91,6 +93,7 @@ export async function validateSnapshot(
       ...loaded.diagnostics,
       ...built.diagnostics,
       ...implementation,
+      ...overlap,
       ...references.diagnostics,
     ],
   };

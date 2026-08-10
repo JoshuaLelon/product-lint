@@ -6,6 +6,16 @@ export { knowledgeForFile, affectedByNode } from "./queries.js";
 export { synchronizeStaged, expectedSynchronizedNodes, synchronizationDiagnostics } from "./sync.js";
 export { checkStagedCommit, checkCommitMessage, classifyNodeChanges } from "./commit.js";
 export { inspectWorkingTree } from "./status.js";
+export { createExtentIndex, cohortsOf, cohortKey } from "./extent.js";
+export { computeSpectrum, formatSpectrum, bandByName, BAND_DEPENDENCIES } from "./spectrum.js";
+export {
+  acceptBaseline,
+  baselineFrom,
+  compareToBaseline,
+  readBaseline,
+  writeBaseline,
+} from "./baseline.js";
+export { attestationDiagnostics, cohortDigest, loadAttestations } from "./attest.js";
 export { renderFileKnowledgeForLlm, renderAffectedKnowledgeForLlm } from "./llms.js";
 export { createSnapshot } from "./repository.js";
 export { initProject } from "./init.js";

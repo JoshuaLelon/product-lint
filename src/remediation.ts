@@ -23,10 +23,43 @@ const FIXES: Record<string, string> = {
     "Add the repository paths this mechanism owns to implementation.files, then run product-lint knowledge sync --staged. A glob is allowed. Each path must exist.",
   "PL0502 DEAD_IMPLEMENTATION_PATH":
     "Remove the entry from implementation.files, or correct it to the path the file has now. Then run product-lint knowledge sync --staged.",
+  "PL0603 OVERLAPPING_MECHANISM":
+    "Decide which Mechanism owns the shared files and narrow the other node's implementation.files so each governed file has exactly one owner. If neither node owns them alone because the two say the same thing, delete one and give the survivor both parents — a node is allowed many parents. Then run product-lint knowledge sync --staged.",
   "PL0601 UNMAPPED_FILE":
     "Add this path to implementation.files on the Mechanism node that owns it, or create a new Mechanism node for it. Then run product-lint knowledge sync --staged.",
   "PL0602 UNGOVERNED_TREE":
     "Do not create a Mechanism node yet. A Mechanism node needs an Architecture parent, and that level does not exist, so this repository must build the missing levels downward first. Start at the level named in requiredLevel and put the question below to the user. The tree below is every governed file with no owner, which is the size of the job inside the current governedPaths.include. If this repository had code before it had Product Lint, narrow that glob to the area you are modelling now, and widen it as each Mechanism node lands.",
+
+  // Review. Mutual exclusivity between two statements has no deterministic
+  // test, so none of these judge one. They enforce that the judgement was made
+  // against the text as it stands now, which is arithmetic.
+  "PL0801 INVALID_ATTESTATION":
+    "Give the file a cohort, a digest, and a non-empty note, or delete it. The note is the review: one sentence naming what divides these nodes from each other.",
+  "PL0802 UNREVIEWED_COHORT":
+    "Read these nodes together, as a set. Then write docs/attest/<cohort>.json with the cohort id, details.digest as digest, and a note naming the principle that divides them — for example 'these are the three transitions the product rule permits'. If reading them shows two that overlap, fix that first and attest afterwards.",
+  "PL0803 STALE_COHORT_ATTESTATION":
+    "The nodes changed after the last review, so read the set again. details.members lists them. Then replace digest in the attestation file with details.currentDigest and rewrite the note if the principle that divides them changed.",
+  "PL0804 ORPHANED_ATTESTATION":
+    "Delete the attestation file. The cohort it reviewed no longer exists, so the review describes nothing.",
+
+  // Ratchet. Counts of facts, held per band, never summed — a total lets a gain
+  // in one property pay for a loss in another.
+  "PL0901 BAND_REGRESSION":
+    "This commit made a measured property worse. Fix the entries in details.files, or, if the rise is deliberate, run product-lint accept --reason \"<why>\" --allow-regression to raise the floor on the record.",
+  "PL0902 MISSING_BASELINE":
+    "Run product-lint accept --reason \"<why this is the floor>\" on a clean tree to record the current counts. Until then nothing can detect a regression.",
+  "PL0903 BAND_NOW_MEASURABLE":
+    "Nothing is wrong. The band could not be measured when the floor was set and now can, so run product-lint accept to record its first real number.",
+  "PL0904 BAND_LOST_MEASURABILITY":
+    "A property that used to be measurable no longer is, which usually means an earlier band it depends on regressed. Fix that band first; this one returns with it.",
+  "PL0906 UNEXPLAINED_ACCEPT":
+    "Pass --reason \"<why>\". The reason is stored in the baseline file and shows up in review, which is what makes raising a floor a decision somebody made rather than a number that drifted.",
+  "PL0907 DIRTY_ACCEPT_TREE":
+    "Commit or stash the working tree first. A floor measured from uncommitted work is not a floor anyone else can reproduce.",
+  "PL0908 UNDECLARED_RAISE":
+    "This would record a worse floor than the one already on file. Fix the regression, or, if it is deliberate, pass --allow-regression along with the reason.",
+  "PL0905 BAND_IMPROVED":
+    "Nothing is wrong. Run product-lint accept --reason \"<what closed>\" to lower the floor so the gain cannot be given back.",
 
   // Shipping
   "PL0701 DIRTY_SHIP_TREE":
@@ -201,6 +234,9 @@ const STYLE_CODES = new Set([
   "PL1009 MISSING_STATEMENT",
   "PL1204 INCOMPLETE_REFERENCE",
   "PL2204 MISSING_KNOWLEDGE_REASON",
+  // The attestation note is prose, and it is the part that forces the reading.
+  "PL0802 UNREVIEWED_COHORT",
+  "PL0803 STALE_COHORT_ATTESTATION",
   "PL2106 UNGOVERNED_IMPLEMENTATION",
   "PL0602 UNGOVERNED_TREE",
 ]);
@@ -216,6 +252,11 @@ const SHAPE_CODES = new Set([
   "PL0301 MISSING_ARCHITECTURE",
   "PL0401 MISSING_MECHANISM",
   "PL1009 MISSING_STATEMENT",
+  // These two ask for the judgement the shape rule describes, at the one moment
+  // the whole set is in front of the reader. Everywhere else the rule arrives
+  // before a node is written; here it arrives before a level is signed off.
+  "PL0802 UNREVIEWED_COHORT",
+  "PL0803 STALE_COHORT_ATTESTATION",
 ]);
 
 export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
