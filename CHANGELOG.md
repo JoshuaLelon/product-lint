@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.4.0
+
+Shape. A tool that tells an agent to create a node, and does not say what a node should be,
+gets the two nodes it did not ask for: one that states two things, and one that repeats what a
+sibling already says. Both read correct on their own.
+
+- `STATEMENT_STYLE` gains the one-thing rule, so it reaches an agent everywhere the style rule
+  already did — the `style` field on 8 diagnostic codes, and the `llms` footer.
+- New `NODE_SHAPE` constant and a `shape` field on `Diagnostic`, carrying the rule that each
+  level is a set of small non-overlapping nodes that covers the level, and that a second node
+  saying what a sibling says should instead be a second parent on the first. Annotated onto the
+  five `MISSING_*` frontier codes and `PL1009 MISSING_STATEMENT` — the diagnostics that are
+  about to add a node — rendered by `formatDiagnostic`, and present in `--json`.
+- `shape` is deliberately not folded into `style`. One is checkable by reading a sentence; the
+  other only by reading the level. It is also not enforced: mutual exclusivity between two prose
+  statements has no deterministic test, and a guess that blocks a commit is worse than a rule
+  that instructs.
+- `product-lint llms` carries `shape` as well as `style`. That view is a slice — it shows a
+  lineage and never a level — which is the exact position from which a duplicate sibling gets
+  written.
+
 ## 0.3.0
 
 Adoption. Every item here came out of one real install into a repository that already had

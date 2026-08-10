@@ -15,5 +15,6 @@ export {
   annotateDiagnostics,
   ASK_FORMATS,
   STATEMENT_STYLE,
+  NODE_SHAPE,
 } from "./remediation.js";
 export type * from "./types.js";

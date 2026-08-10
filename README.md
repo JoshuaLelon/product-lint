@@ -342,6 +342,37 @@ sentence, 25 words or fewer, no idiom, and no noun used as a verb. Statements st
 read, hard to misread, and easy to search. `product-lint llms` output carries the same
 rule, because an agent that reads a knowledge view usually goes on to edit a statement.
 
+The `style` field also carries the one-thing rule: a statement says one thing, and a sentence
+joining two claims that can be false independently is two nodes. A node that states two things
+cannot be superseded by halves — changing one claim forces the other to be restated with it,
+and every descendant to be resynchronized for a change that did not reach them.
+
+### Shaping the level
+
+Diagnostics that are about to add a node carry a `shape` field. Where `style` governs one
+sentence, `shape` governs the set:
+
+```text
+Keep each level a set of small nodes that do not overlap and that cover the level.
+One node states one thing. Prefer more small nodes over fewer large ones.
+Before you add a node, read the nodes already at that level.
+If one of them already states this, do not write a second node. Add your parent to its
+constrainedBy list instead — a node is allowed many parents, and two sources that agree
+are one node with two parents.
+```
+
+The two rules are kept apart on purpose. The style rule is checkable by reading one statement.
+The shape rule is not checkable that way at all — two overlapping nodes each read correct in
+isolation, and only the level shows the overlap. Merging them into one field would make both
+vaguer.
+
+This is why the rule is delivered *before* the node is written rather than enforced after.
+Mutual exclusivity between two prose statements has no deterministic test, and a guess that
+blocks a commit is worse than a rule that instructs. `product-lint llms` carries `shape` as
+well as `style`, for a sharper reason than convenience: that view is a *slice*, showing a
+lineage and never a level, which is the exact position from which a duplicate sibling gets
+written.
+
 ## Reference JSON
 
 `docs/reference/*.json` stores non-canonical institutional memory. References do not

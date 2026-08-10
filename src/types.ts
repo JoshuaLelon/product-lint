@@ -125,6 +125,8 @@ export interface Diagnostic {
   ask?: string;
   /** Writing guidance, present when the fix asks for prose. */
   style?: string;
+  /** How the node must sit beside its siblings, present when the fix adds one. */
+  shape?: string;
   details?: Record<string, unknown>;
 }
 

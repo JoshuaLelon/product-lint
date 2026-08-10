@@ -1,12 +1,24 @@
 import type { AffectedKnowledgeResult, FileKnowledgeResult, SourceCanonicalNode } from "./types.js";
-import { STATEMENT_STYLE } from "./remediation.js";
+import { NODE_SHAPE, STATEMENT_STYLE } from "./remediation.js";
 
 /**
  * An agent that reads this view usually goes on to change the file, which then
  * requires a new or edited statement. The style rule travels with the context.
+ *
+ * The shape rule travels with it for a sharper reason: this view is a SLICE of
+ * the graph, so an agent working from it sees a lineage and not the level. That
+ * is the exact position from which a duplicate node gets written — the node that
+ * already says this is a sibling the slice never showed.
  */
 function styleFooter(): string[] {
-  return ["# If you write or edit a statement", STATEMENT_STYLE, ""];
+  return [
+    "# If you write or edit a statement",
+    STATEMENT_STYLE,
+    "",
+    "# If you add a node",
+    NODE_SHAPE,
+    "",
+  ];
 }
 
 function renderNode(node: SourceCanonicalNode): string {

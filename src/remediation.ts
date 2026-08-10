@@ -158,11 +158,38 @@ const ASK_CODES = new Set([
 
 /**
  * Written in the style it asks for, so the example is the instruction.
+ *
+ * The one-thing rule lives here rather than beside the MECE rule because it is a
+ * rule about a SENTENCE: it is applied while the statement is being written, and
+ * it is checked by reading that statement alone.
  */
 export const STATEMENT_STYLE =
   "Write in ASD-STE100 Simplified Technical English. Use the active voice. " +
   "Use one sentence of 25 words or fewer. Use simple words and no idiom. " +
-  "Name who does the action. Do not use a noun as a verb.";
+  "Name who does the action. Do not use a noun as a verb. " +
+  "State one thing. If the sentence joins two claims that can be false " +
+  "independently, write two nodes instead.";
+
+/**
+ * How a node sits beside the nodes around it.
+ *
+ * Deliberately separate from STATEMENT_STYLE. That rule is about one sentence;
+ * this one is about a SET, and it cannot be checked by reading a node alone —
+ * two overlapping nodes each read correct in isolation, which is exactly why an
+ * agent needs to be told before it writes the second one.
+ *
+ * Not mechanically enforced. Mutual exclusivity between two prose statements has
+ * no deterministic test, and a guess that blocks a commit is worse than a rule
+ * that instructs.
+ */
+export const NODE_SHAPE = [
+  "Keep each level a set of small nodes that do not overlap and that cover the level.",
+  "One node states one thing. Prefer more small nodes over fewer large ones.",
+  "Before you add a node, read the nodes already at that level.",
+  "If one of them already states this, do not write a second node. Add your parent to its constrainedBy list instead — a node is allowed many parents, and two sources that agree are one node with two parents.",
+  "If one of them states part of this, split the smaller claim out and let both parents point at it.",
+  "Name what the level does not cover yet. A gap you can name is work; a gap you cannot see is a wrong answer later.",
+].join("\n");
 
 /** Diagnostics that ask a human or an agent to write prose. */
 const STYLE_CODES = new Set([
@@ -178,15 +205,30 @@ const STYLE_CODES = new Set([
   "PL0602 UNGOVERNED_TREE",
 ]);
 
+/**
+ * Diagnostics that are about to make an agent ADD a node. The shape rule is
+ * useless after the fact and decisive before, so it rides only these.
+ */
+const SHAPE_CODES = new Set([
+  "PL0001 MISSING_CONTEXT",
+  "PL0101 MISSING_PRODUCT",
+  "PL0201 MISSING_BEHAVIOR",
+  "PL0301 MISSING_ARCHITECTURE",
+  "PL0401 MISSING_MECHANISM",
+  "PL1009 MISSING_STATEMENT",
+]);
+
 export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
   const fix = diagnostic.fix ?? FIXES[diagnostic.code];
   const ask = diagnostic.ask ?? (ASK_CODES.has(diagnostic.code) ? ASK_FORMATS : undefined);
   const style = diagnostic.style ?? (STYLE_CODES.has(diagnostic.code) ? STATEMENT_STYLE : undefined);
-  if (!fix && !ask && !style) return diagnostic;
+  const shape = diagnostic.shape ?? (SHAPE_CODES.has(diagnostic.code) ? NODE_SHAPE : undefined);
+  if (!fix && !ask && !style && !shape) return diagnostic;
   return {
     ...diagnostic,
     ...(fix ? { fix } : {}),
     ...(ask ? { ask } : {}),
+    ...(shape ? { shape } : {}),
     ...(style ? { style } : {}),
   };
 }

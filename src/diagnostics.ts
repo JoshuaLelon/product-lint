@@ -39,6 +39,7 @@ export function formatDiagnostic(input: Diagnostic): string {
   if (diagnostic.fix) lines.push(wrap("fix", diagnostic.fix));
   if (diagnostic.ask) lines.push(wrap("ask", diagnostic.ask));
   if (diagnostic.style) lines.push(wrap("style", diagnostic.style));
+  if (diagnostic.shape) lines.push(wrap("shape", diagnostic.shape));
   if (diagnostic.command) lines.push(`  run: ${diagnostic.command}`);
   // A diagnostic that speaks for many files must name them. The tree is the
   // readable form of that list, and it is the difference between "something in
