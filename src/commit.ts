@@ -23,7 +23,6 @@ import { stagedChanges } from "./git.js";
 import { expectedSynchronizedNodes, synchronizationDiagnostics } from "./sync.js";
 import { computeSpectrum } from "./spectrum.js";
 import { compareToBaseline, readBaseline } from "./baseline.js";
-import { attestationDiagnostics, loadAttestations } from "./attest.js";
 
 function emptyClassification(): NodeChangeClassification {
   return {
@@ -276,12 +275,6 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
     diagnostics: stagedValidation.diagnostics,
   });
   diagnostics.push(...compareToBaseline(spectrum, await readBaseline(config.root)));
-
-  const attestations = await loadAttestations(config, stagedSnapshot);
-  diagnostics.push(
-    ...attestations.diagnostics,
-    ...attestationDiagnostics(config, stagedValidation.graph, attestations.attestations),
-  );
 
   return { diagnostics, nodeChanges, changedImplementationFiles };
 }

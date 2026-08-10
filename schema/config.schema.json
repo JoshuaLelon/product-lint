@@ -29,19 +29,6 @@
           "description": "Optional regular expression the commit subject must match. Omit to leave the subject unconstrained."
         }
       }
-    },
-    "attest": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "levels": {
-          "type": "array",
-          "items": {
-            "enum": ["context", "product", "behavior", "architecture", "mechanism"]
-          },
-          "description": "Levels whose cohorts need a recorded review. Defaults to product, behavior, and architecture. An empty array turns attestation off."
-        }
-      }
     }
   }
 }

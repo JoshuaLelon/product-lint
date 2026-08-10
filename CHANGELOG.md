@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0
+
+Removes cohort attestation, which 0.5.0 added one release earlier.
+
+- `docs/attest/`, the `attest.levels` config key, and diagnostics `PL0801` through `PL0804` are
+  gone. It recorded that somebody had read a level, and went stale when the level changed. The
+  idea was sound and the shape was wrong: it introduced a document type whose only content was a
+  fact about a person, and no machinery could maintain it — a rename orphaned the record, a
+  deletion stranded it, and the digest had to be copied by hand out of a diagnostic. Any
+  automation able to refresh that digest would have refreshed the review along with it, which is
+  the one thing it could not do and still mean anything.
+- `src/extent.ts` goes with it. It existed only to build cohorts, and nothing else called it.
+- Nothing else changes. `PL0603`, `spectrum`, and `accept` never depended on it.
+
 ## 0.5.0
 
 Shape, enforced where it is decidable and recorded where it is not. A level is meant to be a set

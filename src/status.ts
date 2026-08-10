@@ -10,13 +10,11 @@ import { validateSnapshot } from "./validation.js";
 import { synchronizationDiagnostics } from "./sync.js";
 import { detectFrontier } from "./frontier.js";
 import { computeSpectrum } from "./spectrum.js";
-import { attestationDiagnostics, loadAttestations } from "./attest.js";
 
 export interface ProductStatus {
   validation: ValidationResult;
   synchronization: Diagnostic[];
   frontier: FrontierResult;
-  attestation: Diagnostic[];
   spectrum: Spectrum;
 }
 
@@ -34,7 +32,6 @@ export async function inspectWorkingTree(config: ResolvedConfig): Promise<Produc
       validation,
       synchronization: [],
       frontier: { complete: false, diagnostics: [] },
-      attestation: [],
       spectrum: computeSpectrum({ config, snapshot, diagnostics: validation.diagnostics }),
     };
   }
@@ -45,16 +42,11 @@ export async function inspectWorkingTree(config: ResolvedConfig): Promise<Produc
     "product-lint knowledge sync --staged",
   );
   const frontier = detectFrontier(config, validation.graph, snapshot);
-  const loaded = await loadAttestations(config, snapshot);
-  const attestation = [
-    ...loaded.diagnostics,
-    ...attestationDiagnostics(config, validation.graph, loaded.attestations),
-  ];
   const spectrum = computeSpectrum({
     config,
     snapshot,
     graph: validation.graph,
     diagnostics: validation.diagnostics,
   });
-  return { validation, synchronization, frontier, attestation, spectrum };
+  return { validation, synchronization, frontier, spectrum };
 }

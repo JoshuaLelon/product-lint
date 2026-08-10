@@ -103,7 +103,6 @@ docs/
 ├── behavior/
 ├── architecture/
 ├── mechanism/
-├── attest/
 └── reference/
 ```
 
@@ -374,10 +373,10 @@ well as `style`, for a sharper reason than convenience: that view is a *slice*, 
 lineage and never a level, which is the exact position from which a duplicate sibling gets
 written.
 
-Two parts of the rule *are* decidable, and those are enforced rather than instructed. Where two
-nodes bind to the same file, the file settles it — see `PL0603` below. Where they do not, the
-tool cannot judge the overlap, but it can decide whether anybody has read the level since it
-last changed — see [Reviewing a level](#reviewing-a-level).
+One part of the rule *is* decidable and is enforced rather than instructed. Only Mechanism nodes
+bind to files, so at that level the repository settles the question — see `PL0603` below. Above
+it the rule stays an instruction, because nothing there can be checked without judging what two
+sentences mean.
 
 ## Shape
 
@@ -434,44 +433,6 @@ a committed file where review can see it.
 A property that was masked when the floor was set is never compared against it. An unknown is not
 a regression from zero, and treating it as one would punish the commit that made the graph
 measurable — which is the commit that did the most good.
-
-### Reviewing a level
-
-A **cohort** is the children of one parent at one level. That is the unit at which exclusivity is
-a question at all: two children of the same parent are required not to overlap, and two nodes
-answering different parents are not.
-
-The tool cannot decide whether two statements overlap. It can decide whether anyone has read them
-together since they last changed, which is the same move `sync.constraintsDigest` already makes
-for derived state, applied to a judgement instead of a field:
-
-```json
-{
-  "cohort": "product.current-version/behavior",
-  "digest": "sha256:product-lint-cohort-v1:...",
-  "reviewedFor": ["exclusive", "exhaustive"],
-  "note": "Approve, reject, and comment are the three transitions the product rule permits."
-}
-```
-
-Store it in `docs/attest/`. The digest covers member ids and their statements, so it moves when a
-member is added or restated and stays put when a digest elsewhere is resynchronized — re-reviewing
-a level because an unrelated file changed is how a review requirement becomes a rubber stamp.
-
-The `note` is the review. Naming the principle that divides the nodes is the part that cannot be
-written without reading them, and it is held to the same `style` rule as any other statement.
-
-Reported as `info` during `check` and `commit check`, and as an error at `ship`. An open question
-never blocks a commit; a level nobody has read since it changed does block a release. On by
-default at product, behavior, and architecture. Turn it off with:
-
-```json
-{ "attest": { "levels": [] } }
-```
-
-Mechanism is excluded by default because `PL0603` already decides the part of it that files can
-settle, and Mechanism cohorts are the largest, so asking there costs the most attention for the
-least it can add.
 
 ## Reference JSON
 

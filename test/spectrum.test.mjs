@@ -14,13 +14,9 @@ import {
   acceptBaseline,
   bandByName,
   baselineFrom,
-  cohortDigest,
-  cohortsOf,
   compareToBaseline,
-  createSnapshot,
   inspectWorkingTree,
   loadConfig,
-  validateSnapshot,
 } from "../dist/index.js";
 import { createRepository, writeNode, git } from "./_helpers.mjs";
 
@@ -171,21 +167,13 @@ test("accept records a floor, and raising it needs the flag", async () => {
   assert.equal(declared.baseline.bands.COVERAGE.residual, 1);
 });
 
-test("the cohort digest moves on a restatement and not on a resync", async () => {
+test("the spectrum is a fixed-length vector in a stable order", async () => {
   const { root } = await createRepository();
-  const config = await loadConfig(root);
-  const snapshot = await createSnapshot(config, "working");
-  const { graph } = await validateSnapshot(config, snapshot);
-  const cohort = cohortsOf(graph).find((item) => item.level === "mechanism");
-  const before = cohortDigest(graph, cohort);
-
-  // A synchronization field is not part of the semantic fingerprint, so the
-  // review it recorded is still a review of this text.
-  const resynced = structuredClone(graph);
-  resynced.nodes.get(cohort.memberIds[0]).sync = { constraintsDigest: "sha256:different" };
-  assert.equal(cohortDigest(resynced, cohort), before);
-
-  const restated = structuredClone(graph);
-  restated.nodes.get(cohort.memberIds[0]).statement = "Approval runs somewhere else entirely.";
-  assert.notEqual(cohortDigest(restated, cohort), before);
+  const spectrum = await spectrumOf(root);
+  // A consumer reads bands positionally and by name. Both must hold, or a
+  // shorter vector could read as "the missing ones were clean".
+  assert.deepEqual(
+    spectrum.bands.map((band) => band.name),
+    Object.keys(BAND_DEPENDENCIES),
+  );
 });

@@ -30,18 +30,6 @@ const FIXES: Record<string, string> = {
   "PL0602 UNGOVERNED_TREE":
     "Do not create a Mechanism node yet. A Mechanism node needs an Architecture parent, and that level does not exist, so this repository must build the missing levels downward first. Start at the level named in requiredLevel and put the question below to the user. The tree below is every governed file with no owner, which is the size of the job inside the current governedPaths.include. If this repository had code before it had Product Lint, narrow that glob to the area you are modelling now, and widen it as each Mechanism node lands.",
 
-  // Review. Mutual exclusivity between two statements has no deterministic
-  // test, so none of these judge one. They enforce that the judgement was made
-  // against the text as it stands now, which is arithmetic.
-  "PL0801 INVALID_ATTESTATION":
-    "Give the file a cohort, a digest, and a non-empty note, or delete it. The note is the review: one sentence naming what divides these nodes from each other.",
-  "PL0802 UNREVIEWED_COHORT":
-    "Read these nodes together, as a set. Then write docs/attest/<cohort>.json with the cohort id, details.digest as digest, and a note naming the principle that divides them — for example 'these are the three transitions the product rule permits'. If reading them shows two that overlap, fix that first and attest afterwards.",
-  "PL0803 STALE_COHORT_ATTESTATION":
-    "The nodes changed after the last review, so read the set again. details.members lists them. Then replace digest in the attestation file with details.currentDigest and rewrite the note if the principle that divides them changed.",
-  "PL0804 ORPHANED_ATTESTATION":
-    "Delete the attestation file. The cohort it reviewed no longer exists, so the review describes nothing.",
-
   // Ratchet. Counts of facts, held per band, never summed — a total lets a gain
   // in one property pay for a loss in another.
   "PL0901 BAND_REGRESSION":
@@ -234,9 +222,6 @@ const STYLE_CODES = new Set([
   "PL1009 MISSING_STATEMENT",
   "PL1204 INCOMPLETE_REFERENCE",
   "PL2204 MISSING_KNOWLEDGE_REASON",
-  // The attestation note is prose, and it is the part that forces the reading.
-  "PL0802 UNREVIEWED_COHORT",
-  "PL0803 STALE_COHORT_ATTESTATION",
   "PL2106 UNGOVERNED_IMPLEMENTATION",
   "PL0602 UNGOVERNED_TREE",
 ]);
@@ -252,11 +237,6 @@ const SHAPE_CODES = new Set([
   "PL0301 MISSING_ARCHITECTURE",
   "PL0401 MISSING_MECHANISM",
   "PL1009 MISSING_STATEMENT",
-  // These two ask for the judgement the shape rule describes, at the one moment
-  // the whole set is in front of the reader. Everywhere else the rule arrives
-  // before a node is written; here it arrives before a level is signed off.
-  "PL0802 UNREVIEWED_COHORT",
-  "PL0803 STALE_COHORT_ATTESTATION",
 ]);
 
 export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {

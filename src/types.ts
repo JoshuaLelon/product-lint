@@ -69,18 +69,6 @@ export interface ProductLintConfig {
   knowledgeRoot?: string;
   governedPaths?: GovernedPathConfig;
   commit?: CommitConventionConfig;
-  attest?: AttestConfig;
-}
-
-/**
- * Which levels must carry a recorded review of each cohort.
- *
- * Unset means none, which is the default. The rule this enforces is not "these
- * nodes do not overlap" — no tool can decide that from prose — but "somebody
- * read these nodes together after the last time they changed."
- */
-export interface AttestConfig {
-  levels?: KnowledgeLevel[];
 }
 
 export interface ResolvedConfig {
@@ -97,9 +85,6 @@ export interface ResolvedConfig {
     trailer: string;
     requireBody: boolean;
     subjectPattern?: string;
-  };
-  attest: {
-    levels: KnowledgeLevel[];
   };
 }
 

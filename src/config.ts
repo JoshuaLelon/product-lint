@@ -54,22 +54,5 @@ export async function loadConfig(cwd = process.cwd(), explicit?: string): Promis
       requireBody: input.commit?.requireBody ?? true,
       ...(input.commit?.subjectPattern ? { subjectPattern: input.commit.subjectPattern } : {}),
     },
-    attest: {
-      // On by default at the three levels where overlap has no other detector.
-      //
-      // Mechanism is left out, and not because it matters less: PL0603 already
-      // decides the part of it that files can settle, and Mechanism cohorts are
-      // the largest, so asking there costs the most attention for the least new
-      // information.
-      //
-      // These read as `info` during `check` and `commit check`, so an unreviewed
-      // level never blocks a commit. Only `ship` treats them as errors. A level
-      // nobody has read since it changed is exactly what a shipping gate is for,
-      // and a commit gate would only teach --no-verify.
-      levels: (input.attest?.levels ?? ["product", "behavior", "architecture"]).filter(
-        (level): level is KnowledgeLevel =>
-          (KNOWLEDGE_LEVELS as readonly string[]).includes(level),
-      ),
-    },
   };
 }

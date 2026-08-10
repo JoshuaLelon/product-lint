@@ -127,18 +127,9 @@ async function main(): Promise<void> {
           message: "Working tree must be clean before shipping.",
         }]
       : [];
-    // Attestation is an open review, not a defect, so it reads as incomplete
-    // work like the frontier does — except at `ship`, which is the point of
-    // asking. Shipping a level nobody has read since it changed is the thing
-    // the record exists to prevent.
-    const attestation = status.attestation.map((item) =>
-      command === "ship" && item.severity === "info" && item.code !== "PL0804 ORPHANED_ATTESTATION"
-        ? { ...item, severity: "error" as const }
-        : item,
-    );
     const all = command === "frontier"
       ? frontier
-      : [...structural, ...sync, ...frontier, ...attestation, ...shipDiagnostics];
+      : [...structural, ...sync, ...frontier, ...shipDiagnostics];
     if (parsed.values.json) {
       console.log(
         stringifyJson({
@@ -152,9 +143,8 @@ async function main(): Promise<void> {
       process.stdout.write(formatDiagnostics(all));
       if (command !== "frontier") process.stdout.write(`\n${formatSpectrum(status.spectrum)}`);
     }
-    if (hasErrors([...structural, ...sync, ...attestation, ...shipDiagnostics])) {
-      process.exitCode = 1;
-    } else if (!status.frontier.complete) process.exitCode = 2;
+    if (hasErrors([...structural, ...sync, ...shipDiagnostics])) process.exitCode = 1;
+    else if (!status.frontier.complete) process.exitCode = 2;
     return;
   }
 

@@ -13,7 +13,7 @@ export interface InitResult {
   notes: string[];
 }
 
-const KNOWLEDGE_DIRECTORIES = [...KNOWLEDGE_LEVELS, "reference", "attest"] as const;
+const KNOWLEDGE_DIRECTORIES = [...KNOWLEDGE_LEVELS, "reference"] as const;
 
 const LEFTHOOK_FILENAMES = [
   "lefthook.yml",
