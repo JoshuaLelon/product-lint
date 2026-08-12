@@ -425,8 +425,8 @@ constrainedBy: audience.segment.studio
 ...
 ```
 
-The `llms` views carry the full statement of every node, plus the style, shape, and placement
-rules, because an agent that reads one usually goes on to edit a statement. A slice is a
+The `llms` views carry the full statement of every node, plus the style, shape, placement,
+and vocabulary rules, because an agent that reads one usually goes on to edit a statement. A slice is a
 lineage, so it hides the level the shape rule is about — and shows the parent the placement
 rule is about.
 
@@ -549,6 +549,7 @@ expected   where the missing file belongs
 fix        the specific repair
 ask        how to put the question to the user, present when the fix needs their answer
 style      how to write, present when the fix asks for prose
+vocabulary how terms are marked, coined, and placed, present when the fix writes prose
 run        the command to run
 ```
 
@@ -671,6 +672,80 @@ Like `shape`, this rule is delivered before the node is written rather than enfo
 `PL1104` can see that a parent exists one level up; nothing can see that the statement belongs
 there.
 
+## Vocabulary
+
+As knowledge descends the levels it coins vocabulary — the product's own nouns. Left
+implicit, the coining is invisible: a term gets introduced inside a statement with no
+declaration, and nothing can tell a defined noun from ordinary English, so one word
+quietly carries two meanings while two words quietly name one thing.
+
+A **term** is declared where it is first needed, inside the level that needs it:
+
+```json
+// docs/product/terms/plan.json
+{
+  "$schema": "../../../node_modules/product-lint/schema/term-node.schema.json",
+  "schemaVersion": 1,
+  "id": "term.plan",
+  "level": "product",
+  "name": "plan",
+  "definition": "A plan is the set of doable tasks a member approves to resolve one ambiguous task."
+}
+```
+
+A term is a name, not a claim: it has no `constrainedBy` and creates no frontier
+obligation. Its only edges are its **uses**, marked in the prose itself:
+
+```text
+Only a *plan* the member approves finishes the work of making a task doable.
+```
+
+So a reader — and the linter — can tell the defined noun from "we plan to ship". The
+statements' other notations keep their jobs: backticks are code identifiers, quotes are
+surface literals, asterisks are defined terms.
+
+The decidable half is enforced. A marked word must resolve (`PL1307 MISSING_TERM` —
+marking nothing is legal; the moment you mark, you owe the declaration). One name has one
+declaration, globally (`PL1304 DUPLICATE_TERM_NAME` — one word cannot carry two meanings;
+the repair is a two-word rename: *day plan*, *retain plan*). And vocabulary flows down
+only (`PL1308 TERM_FROM_BELOW`): a statement may use terms of its own level and above,
+never below, so a product law written in a surface's or a mechanism's word is named.
+Audience and context declare no terms at all — context describes the world before the
+product exists, in the world's words.
+
+Definitions join the digest machinery. A node whose statement marks terms carries
+`sync.vocabularyDigest`; changing a definition goes stale everywhere the word is spoken
+(`PL2004 STALE_VOCABULARY`), and the commit path requires every marking text staged beside
+the definition change, with a `Knowledge-Change: term.plan` trailer. Nodes that mark
+nothing carry nothing, so adopting costs zero bytes in existing files.
+
+The judgement half is reported, never enforced:
+
+```bash
+npx product-lint vocabulary            # the review surface, exit 0 always
+npx product-lint vocabulary --staged   # scoped to the staged diff
+```
+
+`PL0801 UNMARKED_TERM_USE` finds a declared name used unmarked at the term's level or
+deeper — never shallower, never verb forms, never inside quotes — grouped one block per
+term so a common word folds instead of flooding. The scan carries no dictionary: zero
+declared terms, zero noise, which is what keeps an undeclared term legal forever.
+`PL0802 SYNONYM_CANDIDATE` reports two definitions written in mostly the same words, and a
+human decides — two words *may* name two things. `PL0803 CAPITALIZED_UNDECLARED` is the
+migration seed: mid-sentence capitals are the convention statements were already
+half-using for product nouns. `commit check --staged` additionally prints `PL0801` for the
+statements in the diff, info only — the one moment the mark costs two characters in a file
+already open.
+
+The fourth authoring rule travels with the same diagnostics that carry the other three,
+and the frontier prints the **terms in scope** beside the nodes already at the level, for
+the same reason: synonym prevention happens before the write. The `llms` views carry a
+`# Terms` section with the definition of every term the shown statements mark, so an agent
+meets *plan* with its meaning on the page it is editing from.
+
+`knowledge affected-by term.plan` lists the blast radius of a definition change or a
+rename: every statement and definition that speaks the word.
+
 ## Overlapping mechanisms
 
 Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
@@ -723,8 +798,9 @@ product-lint validate [--json]
 product-lint check [--json]
 product-lint frontier [--json]
 product-lint ship [--json]
+product-lint vocabulary [--staged] [--json]
 product-lint knowledge for-file <path> [--json]
-product-lint knowledge affected-by <node-id> [--json]
+product-lint knowledge affected-by <node-id|term-id> [--json]
 product-lint knowledge slice <set=value,...> [--json]
 product-lint knowledge sync --staged [--json]
 product-lint commit check --staged [--json]
@@ -740,3 +816,9 @@ product-lint help
 
 Product Lint intentionally does not include ADR files, plans, conventions, a persisted full
 graph, semantic model calls, general `Built by` links, or tool-enforcement registries.
+
+Vocabulary support keeps the same lines: no semantic judgement in the lint path (synonymy
+beyond exact-name collision is reported for a human, never blocked), no aliases or synonym
+rings (two names for one thing is the defect, not a feature), no suppression lists, no
+governance of prose outside canonical nodes, and no persisted glossary — the `vocabulary`
+command is a view, like every other.

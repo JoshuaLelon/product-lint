@@ -23,11 +23,23 @@ import {
   nodeFingerprint,
   semanticFingerprint,
 } from "./graph.js";
+import type { SourceTermNode } from "./types.js";
 import { LEVEL_AUTHORITY, firstAbsentLevel } from "./frontier.js";
 import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { stagedChanges } from "./git.js";
-import { expectedSynchronizedNodes, synchronizationDiagnostics } from "./sync.js";
+import {
+  expectedSynchronizedNodes,
+  expectedSynchronizedTerms,
+  synchronizationDiagnostics,
+} from "./sync.js";
+import {
+  buildVocabulary,
+  resolveMarks,
+  semanticTermFingerprint,
+  termFingerprint,
+} from "./terms.js";
+import { unmarkedUseDiagnostics } from "./vocabulary.js";
 
 function emptyClassification(): NodeChangeClassification {
   return {
@@ -66,6 +78,46 @@ export function classifyNodeChanges(
       result.semantic.add(id);
       result.changedPaths.set(id, after.sourcePath);
     } else if (nodeFingerprint(before) !== nodeFingerprint(after)) {
+      result.synchronizationOnly.add(id);
+      result.changedPaths.set(id, after.sourcePath);
+    }
+  }
+  return result;
+}
+
+/**
+ * Term changes join the same classification the trailers and PL2105 read, so a
+ * definition edit takes a Knowledge-Change trailer and a digest-only rewrite
+ * of a term file does not. Ids never collide: term ids carry their own prefix.
+ */
+export function classifyTermChanges(
+  result: NodeChangeClassification,
+  head: SourceTermNode[],
+  staged: SourceTermNode[],
+): NodeChangeClassification {
+  const headById = new Map(head.map((term) => [term.id, term]));
+  const stagedById = new Map(staged.map((term) => [term.id, term]));
+  for (const id of new Set([...headById.keys(), ...stagedById.keys()])) {
+    const before = headById.get(id);
+    const after = stagedById.get(id);
+    if (!before && after) {
+      result.semantic.add(id);
+      result.added.add(id);
+      result.changedPaths.set(id, after.sourcePath);
+      continue;
+    }
+    if (before && !after) {
+      result.semantic.add(id);
+      result.deleted.add(id);
+      result.changedPaths.set(id, before.sourcePath);
+      continue;
+    }
+    if (!before || !after) continue;
+    if (before.sourcePath !== after.sourcePath) result.changedPaths.set(id, after.sourcePath);
+    if (semanticTermFingerprint(before) !== semanticTermFingerprint(after)) {
+      result.semantic.add(id);
+      result.changedPaths.set(id, after.sourcePath);
+    } else if (termFingerprint(before) !== termFingerprint(after)) {
       result.synchronizationOnly.add(id);
       result.changedPaths.set(id, after.sourcePath);
     }
@@ -118,7 +170,11 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
   const headValidation = await validateSnapshot(config, headSnapshot);
   const stagedValidation = await validateSnapshot(config, stagedSnapshot);
   const changes = await stagedChanges(config.root);
-  const nodeChanges = classifyNodeChanges(headValidation.graph, stagedValidation.graph);
+  const nodeChanges = classifyTermChanges(
+    classifyNodeChanges(headValidation.graph, stagedValidation.graph),
+    headValidation.terms,
+    stagedValidation.terms,
+  );
   const diagnostics: Diagnostic[] = [...stagedValidation.diagnostics];
   const changedImplementationFiles = changes.filter(
     (change) => isGoverned(config, change.path) || Boolean(change.oldPath && isGoverned(config, change.oldPath)),
@@ -134,6 +190,7 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
       stagedSnapshot,
       "product-lint knowledge sync --staged",
       headSnapshot,
+      stagedValidation.terms,
     )),
   );
 
@@ -214,6 +271,17 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
 
   for (const id of nodeChanges.semantic) {
     const affected = new Set<string>();
+    // A term's dependents are not children — a term has none — but every text
+    // that speaks the word: statements that mark it, and definitions that mark
+    // it. Same rule as a parent change, read through the marks.
+    if (id.startsWith("term.")) {
+      for (const dependent of termDependents(headValidation.graph, headValidation.terms, id)) {
+        affected.add(dependent);
+      }
+      for (const dependent of termDependents(stagedValidation.graph, stagedValidation.terms, id)) {
+        affected.add(dependent);
+      }
+    }
     if (headValidation.graph?.nodes.has(id)) {
       for (const child of descendantsOf(headValidation.graph, [id])) affected.add(child);
     }
@@ -237,8 +305,20 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
   }
 
   if (headValidation.graph) {
-    const expectedHead = await expectedSynchronizedNodes(headValidation.graph, headSnapshot);
-    const expectedStaged = await expectedSynchronizedNodes(stagedValidation.graph, stagedSnapshot);
+    const expectedHead = await expectedSynchronizedNodes(
+      headValidation.graph,
+      headSnapshot,
+      undefined,
+      headValidation.terms,
+    );
+    const expectedStaged = await expectedSynchronizedNodes(
+      stagedValidation.graph,
+      stagedSnapshot,
+      undefined,
+      stagedValidation.terms,
+    );
+    const expectedHeadTerms = expectedSynchronizedTerms(headValidation.terms);
+    const expectedStagedTerms = expectedSynchronizedTerms(stagedValidation.terms);
     for (const id of nodeChanges.synchronizationOnly) {
       const before = expectedHead.get(id);
       const after = expectedStaged.get(id);
@@ -249,6 +329,17 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
           message: `${id} contains a synchronization-only change without a changed input.`,
           nodeId: id,
           path: stagedValidation.graph.nodes.get(id)?.sourcePath,
+        });
+      }
+      const beforeTerm = expectedHeadTerms.get(id);
+      const afterTerm = expectedStagedTerms.get(id);
+      if (beforeTerm && afterTerm && termFingerprint(beforeTerm) === termFingerprint(afterTerm)) {
+        diagnostics.push({
+          code: "PL2104 SPURIOUS_SYNC",
+          severity: "error",
+          message: `${id} contains a synchronization-only change without a changed input.`,
+          nodeId: id,
+          path: afterTerm.sourcePath,
         });
       }
     }
@@ -271,7 +362,38 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
 
   diagnostics.push(...widenedAudiences(headValidation.graph, stagedValidation.graph));
 
+  // The one moment a mark costs two characters in a file already open and
+  // already owed a trailer. Info only, scoped to the statements this diff
+  // touches; the standing backlog stays in `product-lint vocabulary`.
+  const changedStatementNodes = [...stagedValidation.graph.nodes.values()].filter((node) =>
+    nodeChanges.semantic.has(node.id),
+  );
+  diagnostics.push(...unmarkedUseDiagnostics(changedStatementNodes, stagedValidation.terms));
+
   return { diagnostics, nodeChanges, changedImplementationFiles };
+}
+
+/** Every id whose text marks the term: statements in the graph, definitions in the vocabulary. */
+function termDependents(
+  graph: KnowledgeGraph | undefined,
+  terms: SourceTermNode[],
+  termId: string,
+): string[] {
+  const vocabulary = buildVocabulary(terms);
+  if (!vocabulary.byId.has(termId)) return [];
+  const ids: string[] = [];
+  for (const node of graph?.nodes.values() ?? []) {
+    if (resolveMarks(node.statement, vocabulary).terms.some((term) => term.id === termId)) {
+      ids.push(node.id);
+    }
+  }
+  for (const term of terms) {
+    if (term.id === termId) continue;
+    if (resolveMarks(term.definition, vocabulary).terms.some((used) => used.id === termId)) {
+      ids.push(term.id);
+    }
+  }
+  return ids;
 }
 
 /**

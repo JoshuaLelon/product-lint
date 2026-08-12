@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.12.0
+
+Vocabulary: terms declared where they are first needed, uses marked in prose.
+
+- A **term** is a seventh node kind, stored inside the level that declares it:
+  `docs/<level>/terms/<slug>.json` with an id (`term.<slug>`), a `level`, a surface `name`,
+  and a one-sentence `definition` under the existing style rule. A term is a name, not a
+  claim: no `constrainedBy`, no frontier obligation. Its only edges are its uses, derived
+  from marked statement text and never authored — which is how the feature adds no field to
+  any existing node. Terms may be declared at product, behavior, architecture, and mechanism,
+  never at audience or context: context describes the member's world before the product
+  exists, and a coined noun cannot appear in a statement that stays true if you build nothing.
+- **Notation**: a use is the term's name in single asterisks, inline — `the member's *plan*`.
+  Two characters, renders as emphasis wherever statements reach markdown, and visible as
+  itself in JSON and the terminal. Resolution is case-sensitive except the first character
+  and allows the noun inflections `s`, `es` (only after s/x/z/ch/sh stems), and `'s`.
+  A literal asterisk escapes as `\*`; anything unbalanced or empty is `PL1311`, an error,
+  never a guess.
+- **The decidable half is enforced** (`validate`/`check`/commit): a marked word must resolve
+  (`PL1307 MISSING_TERM` — marking nothing is legal; the moment you mark, you owe the
+  declaration), one name has one declaration globally and case-insensitively
+  (`PL1304 DUPLICATE_TERM_NAME` — the homonymy rule; the repair is a two-word rename), and
+  vocabulary flows down only (`PL1308 TERM_FROM_BELOW` — a product law written in the
+  surface's word is named, which makes the hand-maintained "whose vocabulary" audit a
+  diagnostic). Plus the shape codes: `PL1301`–`PL1306`, `PL1309`, `PL1310 TERM_CYCLE`.
+- **Definitions join the digest machinery.** A node whose statement marks terms carries
+  `sync.vocabularyDigest` over the sorted (id, meaning) pairs of the terms it marks; a term
+  whose definition marks terms carries the same. Changing a definition goes stale everywhere
+  the word is spoken (`PL2004 STALE_VOCABULARY`), `knowledge sync --staged` rewrites, and the
+  commit path holds the set together: a definition edit is a semantic change taking a
+  `Knowledge-Change: term.<slug>` trailer with every marking text staged beside it (`PL2103`
+  extended through marks). A separate digest field rather than a fold into
+  `constraintsDigest` because the repairs differ: stale constraints mean re-read your
+  parent's claim, stale vocabulary means re-read the definition of a word you use. Nodes
+  that mark nothing carry nothing, so an adopting repository's files stay byte-identical.
+- **The judgement half is reported, never enforced** — new `product-lint vocabulary
+  [--staged]`, exit 0 always, in the spirit of `contested`: `PL0801 UNMARKED_TERM_USE`
+  (a declared name unmarked at the term's level or deeper — never shallower, never verb
+  forms, never inside quotes; grouped one block per term the way a long file list folds
+  into a tree), `PL0802 SYNONYM_CANDIDATE` (two definitions written in mostly the same
+  words), `PL0803 CAPITALIZED_UNDECLARED` (the migration seed: mid-sentence capitals are
+  the convention statements were already half-using), `PL0804 UNUSED_TERM`, and
+  `PL0805 TERM_UNUSED_AT_ITS_LEVEL`. The scan carries no dictionary: zero declared terms,
+  zero noise, which is what makes an undeclared term legal forever.
+- **Commit-scoped visibility**: `commit check --staged` prints `PL0801` for statements
+  changed in the staged diff only, info severity, exit codes untouched — the one moment the
+  mark costs two characters in a file already open and already owed a trailer. The standing
+  backlog stays in the report command.
+- **A fourth authoring rule**, `vocabulary`, beside style, shape, and placement — the fourth
+  scope: checked by reading a sentence beside the declared terms. It rides the same
+  node-adding diagnostics and both `llms` views, and the frontier now prints the **terms in
+  scope** at the target level beside the level's nodes, for the same reason the level
+  prints: synonym prevention happens before the write, and a rule about a set the reader
+  cannot see is advice, not information. The `llms` views also carry a `# Terms` section
+  with the definition of every term the shown statements mark.
+- `knowledge affected-by term.<slug>` lists the blast radius of a definition change or
+  rename: every statement and definition that speaks the word.
+
 ## 0.11.0
 
 A third authoring rule: which level a statement belongs at.

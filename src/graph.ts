@@ -143,16 +143,25 @@ function parseCanonicalNode(
 
   let sync: CanonicalNode["sync"];
   if (value.sync !== undefined) {
-    if (!isRecord(value.sync) || typeof value.sync.constraintsDigest !== "string") {
+    if (
+      !isRecord(value.sync) ||
+      typeof value.sync.constraintsDigest !== "string" ||
+      (value.sync.vocabularyDigest !== undefined && typeof value.sync.vocabularyDigest !== "string")
+    ) {
       diagnostics.push({
         code: "PL1012 INVALID_SYNC",
         severity: "error",
-        message: "sync must contain a string constraintsDigest.",
+        message: "sync must contain a string constraintsDigest, and vocabularyDigest is a string when present.",
         path: sourcePath,
         nodeId: id || undefined,
       });
     } else {
-      sync = { constraintsDigest: value.sync.constraintsDigest };
+      sync = {
+        constraintsDigest: value.sync.constraintsDigest,
+        ...(typeof value.sync.vocabularyDigest === "string"
+          ? { vocabularyDigest: value.sync.vocabularyDigest }
+          : {}),
+      };
     }
   }
 
@@ -226,7 +235,13 @@ export async function loadCanonicalNodes(
 
   for (const level of KNOWLEDGE_LEVELS) {
     const prefix = `${roots[level]}/`;
-    const files = snapshot.files.filter((file) => file.startsWith(prefix) && file.endsWith(".json"));
+    // docs/<level>/terms/ holds term declarations, which are a different node
+    // kind with a different loader. Reading them here would reject every one
+    // of them as a malformed canonical node.
+    const files = snapshot.files.filter(
+      (file) =>
+        file.startsWith(prefix) && file.endsWith(".json") && !file.startsWith(`${prefix}terms/`),
+    );
     for (const file of files) {
       let parsed: unknown;
       try {

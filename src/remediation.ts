@@ -100,11 +100,37 @@ const FIXES: Record<string, string> = {
   "PL1209 MISSING_REFERENCE_PATH":
     "Cite a path that exists in that commit. Run git show --stat <commit> to list its files.",
 
+  // Terms
+  "PL1301 INVALID_TERM":
+    "Replace the file contents with a single JSON object holding $schema, schemaVersion, id, level, name, definition, and optionally sync.",
+  "PL1302 INVALID_TERM_ID":
+    'Rewrite the id as "term." followed by lowercase words joined by hyphens, for example "term.retain-plan".',
+  "PL1303 DUPLICATE_TERM_ID":
+    "Give one of the two term files a new id, or delete the duplicate file.",
+  "PL1304 DUPLICATE_TERM_NAME":
+    "Rename one term's name field — a two-word name is a good name: day plan, retain plan. Then rewrite every marked use of the renamed sense; run product-lint knowledge affected-by <term-id> to list the texts that mark it, and re-read each one to decide which sense it meant. Uses you rewrite are semantic changes and take Knowledge-Change trailers.",
+  "PL1305 MISSING_TERM_DEFINITION":
+    "Add a non-empty name and a one-sentence definition. Define the thing, not the promise: say what kind of thing it is and what tells it from its neighbours.",
+  "PL1306 TERM_FOLDER_MISMATCH":
+    "Move the file to docs/<level>/terms/, or change the level field to match the folder.",
+  "PL1307 MISSING_TERM":
+    "Create docs/<level>/terms/<slug>.json at the shallowest level whose statements need the word, then run product-lint knowledge sync --staged. If the word is ordinary English here, remove the marks instead.",
+  "PL1308 TERM_FROM_BELOW":
+    "Decide which is wrong. If the statement leaks a deeper word, rewrite it in this level's vocabulary — the promise, not the surface or model that keeps it. If the term is declared too deep, move its file up a level — but only if the definition survives that level's falsifier: a product term dies when you promise something else, not when a surface or the internal model changes.",
+  "PL1309 TERM_LEVEL_FORBIDDEN":
+    "Move the term file to docs/<level>/terms/ under product or deeper. Audience and context speak the world's words: a coined noun cannot appear in a statement that stays true if you build nothing.",
+  "PL1310 TERM_CYCLE":
+    "Break the cycle. Remove a marked term from one definition named in the message, and say the thing in plain words there instead.",
+  "PL1311 MALFORMED_TERM_MARK":
+    "Balance the asterisks so every mark reads *term-name*, with no space just inside the marks. Escape a literal asterisk as \\*.",
+
   // Synchronization
   "PL2001 STALE_CONSTRAINTS":
     "Run product-lint knowledge sync --staged, then stage the rewritten JSON with git add docs/.",
   "PL2002 STALE_IMPLEMENTATION":
     "Run product-lint knowledge sync --staged, then stage the rewritten JSON with git add docs/.",
+  "PL2004 STALE_VOCABULARY":
+    "Run product-lint knowledge sync --staged, then stage the rewritten JSON with git add docs/. Re-read the statement against the new definition, and edit the statement if the meaning moved.",
   "PL2003 UNSAFE_SYNC_OVERWRITE":
     "Sync writes from the index and would discard your unstaged edits to this node. Stage the file with git add, or revert it, then sync again.",
 
@@ -135,6 +161,34 @@ const FIXES: Record<string, string> = {
     "Rewrite the subject line to match commit.subjectPattern in product-lint.config.json. Only the subject is checked; the body and trailers are unaffected.",
   "PL2206 INVALID_SUBJECT_PATTERN":
     "Correct commit.subjectPattern in product-lint.config.json, or delete the field to leave the subject unconstrained.",
+
+  // Vocabulary report. Judgement calls: detected, put to a human, never enforced.
+  "PL0801 UNMARKED_TERM_USE":
+    "Three readings; choose one per statement. It is the defined term: mark it, *word*. It is ordinary English: leave it — this report is a review, not a gate. It is a second meaning: do not mark it — coin a different name and declare it, and consider rewording the sentence so the shared word stops carrying two senses.",
+  "PL0802 SYNONYM_CANDIDATE":
+    "If these are one thing, keep one name: delete one file and rewrite the loser's marked uses — product-lint knowledge affected-by <term-id> lists them. If they are two things, sharpen both definitions until each states what the other is not; a reader must be able to tell them apart from the definitions alone.",
+  "PL0803 CAPITALIZED_UNDECLARED":
+    "If this capital marks a product noun, declare it in docs/<level>/terms/ and mark the uses. If it is not a term, lowercase it — mid-sentence capitals are the convention this graph reserves for defined vocabulary.",
+  "PL0804 UNUSED_TERM":
+    "Mark the statements that use this word, or delete the declaration if nothing needs it.",
+  "PL0805 TERM_UNUSED_AT_ITS_LEVEL":
+    "No statement at the declaring level marks this term. Either mark one that uses it, or move the declaration down to the shallowest level whose statements do.",
+};
+
+/**
+ * Asks for the vocabulary codes whose repair is a judgement. The frontier codes
+ * share ASK_FORMATS because their question is open; these carry the specific
+ * choice instead, in the spirit of `contested`: name the pair, let a human decide.
+ */
+const ASKS: Record<string, string> = {
+  "PL1304 DUPLICATE_TERM_NAME":
+    "If the two declarations describe one thing rather than two, this is not a collision but a duplicate: delete one file and keep the better sentence.",
+  "PL1308 TERM_FROM_BELOW":
+    "Put it as candidates to choose: show the statement rewritten without the term beside the term redeclared shallower, with the consequence of each.",
+  "PL0801 UNMARKED_TERM_USE":
+    "If you cannot tell which reading is true, that is the finding. Show the user the sentence beside the definition and let them say what was meant.",
+  "PL0802 SYNONYM_CANDIDATE":
+    "This is a judgement, so put the pair and both definitions to the user and record only what they confirm.",
 };
 
 /**
@@ -253,6 +307,30 @@ export const LEVEL_PLACEMENT = [
   "The child must be able to be false while the parent stays true. If it cannot, do not write it — write the claim the parent does not already contain.",
 ].join("\n");
 
+/**
+ * The fourth rule and the fourth scope. STATEMENT_STYLE is checked by reading
+ * one sentence, NODE_SHAPE by reading the level, LEVEL_PLACEMENT by reading a
+ * node beside its parent. This one is checked by reading a sentence beside the
+ * VOCABULARY — the declared terms in scope — which is why the terms travel
+ * with the diagnostics that deliver it: a rule about a set the reader cannot
+ * see is advice, not information.
+ *
+ * Partially enforced, unlike the other three, because uses are visible: a
+ * marked word must resolve (PL1307), one name has one declaration (PL1304),
+ * and vocabulary flows down only (PL1308). What stays instructed is meaning —
+ * whether an unmarked word is the term, ordinary English, or a second sense —
+ * and the report puts exactly that to a human rather than guessing.
+ */
+export const VOCABULARY_RULE = [
+  "A marked word is a defined term: *plan* is the plan this graph defines, and plan is English.",
+  "If a defined word appears in your sentence with its defined meaning, mark it: *word*.",
+  "One thing has one name. Read the terms in scope before you coin a word; if one already names this thing, use it.",
+  "One name has one thing. Do not use a marked word in a second sense — coin a different name. A two-word name is a good name.",
+  "Declare a term at the shallowest level whose statements need it: docs/<level>/terms/<slug>.json. Audience and context declare none.",
+  "Define the thing, not the promise. Say what kind of thing it is and what tells it from its neighbours; the laws about it stay in the nodes that state them.",
+  "A statement may use terms of its own level and above, never below. If you need a deeper word, you are stating a deeper thing.",
+].join("\n");
+
 /** Diagnostics that ask a human or an agent to write prose. */
 const STYLE_CODES = new Set([
   "PL0011 MISSING_AUDIENCE",
@@ -289,9 +367,21 @@ const SHAPE_CODES = new Set([
   "PL1009 MISSING_STATEMENT",
 ]);
 
+/**
+ * Beyond the six SHAPE_CODES — where a new statement is about to use or coin
+ * the next term — only PL1307 carries the full rule, because its repair is a
+ * declaration and the rule says where declarations go. The report codes
+ * (PL08xx) deliberately do not: a report prints many rows, their fix lines
+ * already carry the decision, and the same eight lines repeated per row would
+ * bury the findings under the rule.
+ */
+const VOCABULARY_CODES = new Set(["PL1307 MISSING_TERM"]);
+
 export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
   const fix = diagnostic.fix ?? FIXES[diagnostic.code];
-  const ask = diagnostic.ask ?? (ASK_CODES.has(diagnostic.code) ? ASK_FORMATS : undefined);
+  const ask =
+    diagnostic.ask ??
+    (ASK_CODES.has(diagnostic.code) ? ASK_FORMATS : ASKS[diagnostic.code]);
   const style = diagnostic.style ?? (STYLE_CODES.has(diagnostic.code) ? STATEMENT_STYLE : undefined);
   // The audience level is n sets rather than one, so it takes its own rule.
   const shape =
@@ -303,7 +393,12 @@ export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
         : undefined);
   const placement =
     diagnostic.placement ?? (SHAPE_CODES.has(diagnostic.code) ? LEVEL_PLACEMENT : undefined);
-  if (!fix && !ask && !style && !shape && !placement) return diagnostic;
+  const vocabulary =
+    diagnostic.vocabulary ??
+    (SHAPE_CODES.has(diagnostic.code) || VOCABULARY_CODES.has(diagnostic.code)
+      ? VOCABULARY_RULE
+      : undefined);
+  if (!fix && !ask && !style && !shape && !placement && !vocabulary) return diagnostic;
   return {
     ...diagnostic,
     ...(fix ? { fix } : {}),
@@ -311,6 +406,7 @@ export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
     ...(shape ? { shape } : {}),
     ...(style ? { style } : {}),
     ...(placement ? { placement } : {}),
+    ...(vocabulary ? { vocabulary } : {}),
   };
 }
 

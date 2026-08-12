@@ -9,6 +9,12 @@ import { buildKnowledgeGraph, loadCanonicalNodes } from "./graph.js";
 import { loadReferences } from "./references.js";
 import { matchesGlob, normalizePath } from "./glob.js";
 import { overlappingMechanisms } from "./overlap.js";
+import {
+  buildVocabulary,
+  definitionMarkDiagnostics,
+  loadTermNodes,
+  statementMarkDiagnostics,
+} from "./terms.js";
 
 const GLOB_METACHARACTERS = /[*?{]/;
 
@@ -86,15 +92,27 @@ export async function validateSnapshot(
   const references = await loadReferences(config, snapshot, built.graph);
   const implementation = built.graph ? deadImplementationPaths(built.graph, snapshot) : [];
   const overlap = built.graph ? overlappingMechanisms(built.graph, snapshot) : [];
+  // Mark checks run on the loaded nodes, not the built graph, so a marked
+  // word that resolves to nothing is named even while the graph has other
+  // structural errors.
+  const loadedTerms = await loadTermNodes(config, snapshot);
+  const vocabulary = buildVocabulary(loadedTerms.terms);
+  const marks = [
+    ...definitionMarkDiagnostics(loadedTerms.terms, vocabulary),
+    ...statementMarkDiagnostics(loaded.nodes, vocabulary),
+  ];
   return {
     ...(built.graph ? { graph: built.graph } : {}),
     references: references.references,
+    terms: loadedTerms.terms,
     diagnostics: [
       ...loaded.diagnostics,
       ...built.diagnostics,
       ...implementation,
       ...overlap,
       ...references.diagnostics,
+      ...loadedTerms.diagnostics,
+      ...marks,
     ],
   };
 }

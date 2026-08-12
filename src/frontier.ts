@@ -5,10 +5,12 @@ import type {
   KnowledgeLevel,
   RepositorySnapshot,
   ResolvedConfig,
+  SourceTermNode,
 } from "./types.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
 import { audienceOverlaps, audienceSets, resolveAudiences } from "./audience.js";
 import { matchesAny } from "./glob.js";
+import { levelIndex } from "./terms.js";
 
 export function governedFiles(config: ResolvedConfig, snapshot: RepositorySnapshot): string[] {
   return snapshot.files.filter(
@@ -128,10 +130,32 @@ function nodesAtLevel(
   };
 }
 
+/**
+ * The terms a statement at this level may use: its own level and above. Shown
+ * beside the level for the same reason the level is shown — the vocabulary
+ * rule says to read the terms in scope before coining a word, and synonym
+ * prevention happens here, before the write, not in a check after it.
+ */
+function termsInScope(
+  terms: SourceTermNode[],
+  level: KnowledgeLevel,
+): { total: number; shown: { id: string; level: string; name: string; definition: string }[] } {
+  const inScope = terms
+    .filter((term) => levelIndex(term.level) <= levelIndex(level))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return {
+    total: inScope.length,
+    shown: inScope
+      .slice(0, LEVEL_SAMPLE_LIMIT)
+      .map((term) => ({ id: term.id, level: term.level, name: term.name, definition: term.definition })),
+  };
+}
+
 function missingChildDiagnostic(
   nodeId: string,
   requiredLevel: KnowledgeLevel,
   graph: KnowledgeGraph,
+  terms: SourceTermNode[],
 ): Diagnostic {
   const definitions = LEVEL_AUTHORITY;
   const definition = definitions[requiredLevel];
@@ -164,6 +188,7 @@ function missingChildDiagnostic(
         sync: { constraintsDigest: "pending" },
       },
       level: nodesAtLevel(graph, requiredLevel),
+      ...(terms.length > 0 ? { termsInScope: termsInScope(terms, requiredLevel) } : {}),
     },
   };
 }
@@ -172,6 +197,7 @@ export function detectFrontier(
   config: ResolvedConfig,
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
+  terms: SourceTermNode[] = [],
 ): FrontierResult {
   const diagnostics: Diagnostic[] = [];
   const rootLevel = KNOWLEDGE_LEVELS[0];
@@ -231,7 +257,7 @@ export function detectFrontier(
           : [...(graph.children.get(node.id) ?? [])].some(
               (childId) => graph.nodes.get(childId)?.level === nextLevel,
             );
-      if (!covered) diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph));
+      if (!covered) diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph, terms));
     }
   }
 

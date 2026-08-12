@@ -22,7 +22,9 @@ export async function inspectWorkingTree(config: ResolvedConfig): Promise<Produc
     validation.graph,
     snapshot,
     "product-lint knowledge sync --staged",
+    undefined,
+    validation.terms,
   );
-  const frontier = detectFrontier(config, validation.graph, snapshot);
+  const frontier = detectFrontier(config, validation.graph, snapshot, validation.terms);
   return { validation, synchronization, frontier };
 }

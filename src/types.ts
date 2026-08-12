@@ -11,6 +11,14 @@ export type KnowledgeLevel = (typeof KNOWLEDGE_LEVELS)[number];
 
 export interface NodeSyncState {
   constraintsDigest: string;
+  /**
+   * Present only when the statement marks at least one term, so a graph that
+   * uses no vocabulary keeps every node file byte-identical. A separate field
+   * rather than a fold into constraintsDigest because the repairs differ: stale
+   * constraints mean "re-read your parent's claim", stale vocabulary means
+   * "re-read the definition of a word you use".
+   */
+  vocabularyDigest?: string;
 }
 
 export interface MechanismImplementation {
@@ -27,6 +35,48 @@ export interface CanonicalNode {
   constrainedBy: string[];
   sync?: NodeSyncState;
   implementation?: MechanismImplementation;
+}
+
+/**
+ * The levels a term may be declared at. Audience and context are excluded on
+ * the placement rule's own logic: context describes the member's world before
+ * the product exists, in the world's words, and a coined noun cannot appear in
+ * a statement that must stay true if you build nothing.
+ */
+export const TERM_LEVELS = ["product", "behavior", "architecture", "mechanism"] as const;
+
+export type TermLevel = (typeof TERM_LEVELS)[number];
+
+export interface TermSyncState {
+  vocabularyDigest: string;
+}
+
+/**
+ * A term is a name, not a claim: it has no constrainedBy, it neither promises
+ * nor obeys, and it creates no frontier obligation. Its only edges are its
+ * uses, which are derived from marked statement text and never authored.
+ */
+export interface TermNode {
+  $schema?: string;
+  schemaVersion?: 1;
+  id: string;
+  level: TermLevel;
+  /** The exact surface form as it appears in prose. Spaces and capitals allowed. */
+  name: string;
+  /** One sentence under STATEMENT_STYLE. May itself mark terms of its level or shallower. */
+  definition: string;
+  /** Present only when the definition marks at least one term. */
+  sync?: TermSyncState;
+}
+
+export interface SourceTermNode extends TermNode {
+  sourcePath: string;
+}
+
+/** Terms indexed for resolution. Names are unique case-insensitively. */
+export interface Vocabulary {
+  byId: Map<string, SourceTermNode>;
+  byName: Map<string, SourceTermNode>;
 }
 
 export interface ReferenceEvidenceFile {
@@ -145,12 +195,16 @@ export interface Diagnostic {
   shape?: string;
   /** How the node must sit under its parent, present when the fix adds one below a node. */
   placement?: string;
+  /** How defined terms are marked, coined, and placed, present when the fix writes prose that may use them. */
+  vocabulary?: string;
   details?: Record<string, unknown>;
 }
 
 export interface ValidationResult {
   graph?: KnowledgeGraph;
   references: SourceReferenceNode[];
+  /** Declared terms, loaded from docs/<level>/terms/. Empty when none are declared. */
+  terms: SourceTermNode[];
   diagnostics: Diagnostic[];
 }
 

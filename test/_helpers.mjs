@@ -122,3 +122,15 @@ export async function createRepository() {
 export async function readNode(root, level, name) {
   return JSON.parse(await readFile(path.join(root, "docs", level, `${name}.json`), "utf8"));
 }
+
+export async function writeTerm(root, term) {
+  const slug = term.id.slice("term.".length).replaceAll(".", "-");
+  const file = path.join(root, "docs", term.level, "terms", `${slug}.json`);
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, `${JSON.stringify({ schemaVersion: 1, ...term }, null, 2)}\n`, "utf8");
+  return file;
+}
+
+export async function readTerm(root, level, slug) {
+  return JSON.parse(await readFile(path.join(root, "docs", level, "terms", `${slug}.json`), "utf8"));
+}

@@ -6,6 +6,7 @@ import type {
   RepositorySnapshot,
   ResolvedConfig,
   SourceCanonicalNode,
+  SourceTermNode,
   SyncResult,
 } from "./types.js";
 import { matchesAny } from "./glob.js";
@@ -15,6 +16,13 @@ import { digest, sha256 } from "./stable-json.js";
 import { createSnapshot } from "./repository.js";
 import { prunableDeadPath, validateSnapshot } from "./validation.js";
 import { ensureGitRepository, hasUnstagedChanges } from "./git.js";
+import {
+  buildVocabulary,
+  resolveMarks,
+  serializeTermNode,
+  termFingerprint,
+  vocabularyDigest,
+} from "./terms.js";
 
 function cloneNode(node: SourceCanonicalNode): SourceCanonicalNode {
   return {
@@ -46,9 +54,11 @@ export async function expectedSynchronizedNodes(
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
   previous?: RepositorySnapshot,
+  terms: SourceTermNode[] = [],
 ): Promise<Map<string, SourceCanonicalNode>> {
   const nodes = new Map<string, SourceCanonicalNode>();
   for (const [id, node] of graph.nodes) nodes.set(id, cloneNode(node));
+  const vocabulary = buildVocabulary(terms);
 
   for (const id of graph.topologicalOrder) {
     const node = nodes.get(id)!;
@@ -66,8 +76,13 @@ export async function expectedSynchronizedNodes(
         fingerprint: audienceSetFingerprint(graph, audienceAxis(wildcard)!),
       })),
     ].sort((left, right) => (left.id < right.id ? -1 : left.id > right.id ? 1 : 0));
+    // A marked term is an input the way a parent is: the statement's meaning
+    // depends on the definition. Absent when nothing is marked, so a graph
+    // that uses no vocabulary keeps every node file byte-identical.
+    const marked = resolveMarks(node.statement, vocabulary).terms;
     node.sync = {
       constraintsDigest: digest(parentState, "product-lint-constraints-v1"),
+      ...(marked.length > 0 ? { vocabularyDigest: vocabularyDigest(marked) } : {}),
     };
     if (node.level === "mechanism") {
       const files = (node.implementation?.files ?? []).filter(
@@ -82,13 +97,36 @@ export async function expectedSynchronizedNodes(
   return nodes;
 }
 
+/**
+ * The same derivation for term files. A definition that marks terms depends on
+ * their meanings; one that marks nothing carries no sync at all.
+ */
+export function expectedSynchronizedTerms(
+  terms: SourceTermNode[],
+): Map<string, SourceTermNode> {
+  const vocabulary = buildVocabulary(terms);
+  const expected = new Map<string, SourceTermNode>();
+  for (const term of terms) {
+    const marked = resolveMarks(term.definition, vocabulary).terms.filter(
+      (item) => item.id !== term.id,
+    );
+    const { sync: _sync, ...rest } = term;
+    expected.set(term.id, {
+      ...rest,
+      ...(marked.length > 0 ? { sync: { vocabularyDigest: vocabularyDigest(marked) } } : {}),
+    });
+  }
+  return expected;
+}
+
 export async function synchronizationDiagnostics(
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
   command = "product-lint knowledge sync --staged",
   previous?: RepositorySnapshot,
+  terms: SourceTermNode[] = [],
 ): Promise<Diagnostic[]> {
-  const expected = await expectedSynchronizedNodes(graph, snapshot, previous);
+  const expected = await expectedSynchronizedNodes(graph, snapshot, previous, terms);
   const diagnostics: Diagnostic[] = [];
   for (const [id, node] of graph.nodes) {
     const wanted = expected.get(id)!;
@@ -97,6 +135,17 @@ export async function synchronizationDiagnostics(
         code: "PL2001 STALE_CONSTRAINTS",
         severity: "error",
         message: `${id} is not synchronized with its direct constraints.`,
+        nodeId: id,
+        path: node.sourcePath,
+        action: "run-command",
+        command,
+      });
+    }
+    if (node.sync?.vocabularyDigest !== wanted.sync?.vocabularyDigest) {
+      diagnostics.push({
+        code: "PL2004 STALE_VOCABULARY",
+        severity: "error",
+        message: `${id} is not synchronized with the definitions of the terms it marks.`,
         nodeId: id,
         path: node.sourcePath,
         action: "run-command",
@@ -113,6 +162,21 @@ export async function synchronizationDiagnostics(
         message: `${id} is not synchronized with its governed implementation files.`,
         nodeId: id,
         path: node.sourcePath,
+        action: "run-command",
+        command,
+      });
+    }
+  }
+  const expectedTerms = expectedSynchronizedTerms(terms);
+  for (const term of terms) {
+    const wanted = expectedTerms.get(term.id)!;
+    if (term.sync?.vocabularyDigest !== wanted.sync?.vocabularyDigest) {
+      diagnostics.push({
+        code: "PL2004 STALE_VOCABULARY",
+        severity: "error",
+        message: `${term.id} is not synchronized with the definitions of the terms it marks.`,
+        nodeId: term.id,
+        path: term.sourcePath,
         action: "run-command",
         command,
       });
@@ -147,7 +211,12 @@ export async function synchronizeStaged(config: ResolvedConfig): Promise<SyncRes
     return { updatedFiles: [], unchangedFiles: [], diagnostics: validation.diagnostics };
   }
 
-  const expected = await expectedSynchronizedNodes(validation.graph, snapshot, previous);
+  const expected = await expectedSynchronizedNodes(
+    validation.graph,
+    snapshot,
+    previous,
+    validation.terms,
+  );
   const updatedFiles: string[] = [];
   const unchangedFiles: string[] = [];
   const diagnostics: Diagnostic[] = [];
@@ -173,6 +242,30 @@ export async function synchronizeStaged(config: ResolvedConfig): Promise<SyncRes
     await mkdir(path.dirname(absolute), { recursive: true });
     await writeFile(absolute, serializeNode(wanted), "utf8");
     updatedFiles.push(current.sourcePath);
+  }
+
+  // Term files hold derived state too, under the same overwrite guard.
+  const expectedTerms = expectedSynchronizedTerms(validation.terms);
+  for (const term of validation.terms) {
+    const wanted = expectedTerms.get(term.id)!;
+    if (termFingerprint(term) === termFingerprint(wanted)) {
+      unchangedFiles.push(term.sourcePath);
+      continue;
+    }
+    if (await hasUnstagedChanges(config.root, term.sourcePath)) {
+      diagnostics.push({
+        code: "PL2003 UNSAFE_SYNC_OVERWRITE",
+        severity: "error",
+        message: `Refusing to overwrite unstaged edits while synchronizing ${term.id}.`,
+        nodeId: term.id,
+        path: term.sourcePath,
+      });
+      continue;
+    }
+    const absolute = path.resolve(config.root, term.sourcePath);
+    await mkdir(path.dirname(absolute), { recursive: true });
+    await writeFile(absolute, serializeTermNode(wanted), "utf8");
+    updatedFiles.push(term.sourcePath);
   }
 
   return { updatedFiles, unchangedFiles, diagnostics };

@@ -41,8 +41,9 @@ export function formatDiagnostic(input: Diagnostic): string {
   if (diagnostic.style) lines.push(wrap("style", diagnostic.style));
   if (diagnostic.shape) lines.push(wrap("shape", diagnostic.shape));
   // Widening scope, in the order a draft gets checked: the sentence, then the
-  // level it sits in, then the parent it sits under.
+  // level it sits in, then the parent it sits under, then the words it speaks.
   if (diagnostic.placement) lines.push(wrap("placement", diagnostic.placement));
+  if (diagnostic.vocabulary) lines.push(wrap("vocabulary", diagnostic.vocabulary));
   if (diagnostic.command) lines.push(`  run: ${diagnostic.command}`);
   // The shape rule says to read the level before adding to it. Printing the
   // rule without the level asks the reader to recall a set they have not seen,
@@ -60,6 +61,34 @@ export function formatDiagnostic(input: Diagnostic): string {
     const hidden = level.total - level.shown.length;
     // Stated, never silent. A list that stops without saying so reads as whole.
     if (hidden > 0) lines.push(`    ... and ${hidden} more not shown`);
+  }
+
+  // The vocabulary rule says to read the terms in scope before coining a word,
+  // and a rule about a set the reader cannot see is advice, not information —
+  // the same reason the level prints above.
+  const termsInScope = diagnostic.details?.termsInScope as
+    | { total: number; shown: { id: string; level: string; name: string; definition: string }[] }
+    | undefined;
+  if (termsInScope && termsInScope.shown.length > 0) {
+    lines.push(`  terms in scope at ${diagnostic.requiredLevel} (${termsInScope.total}):`);
+    for (const term of termsInScope.shown) {
+      lines.push(`    *${term.name}* — ${term.id} (${term.level})`);
+      lines.push(`      ${term.definition}`);
+    }
+    const hiddenTerms = termsInScope.total - termsInScope.shown.length;
+    if (hiddenTerms > 0) lines.push(`    ... and ${hiddenTerms} more not shown`);
+  }
+
+  // A report row that speaks for many statements names them, folded under one
+  // heading per term the way a long file list folds into a tree — so a common
+  // word reads as one block instead of drowning the rare findings.
+  const uses = diagnostic.details?.uses as { id: string; statement: string }[] | undefined;
+  if (Array.isArray(uses) && uses.length > 0) {
+    lines.push(`  uses (${uses.length}):`);
+    for (const use of uses) {
+      lines.push(`    ${use.id}`);
+      lines.push(`      ${use.statement}`);
+    }
   }
 
   // A diagnostic that speaks for many files must name them. The tree is the

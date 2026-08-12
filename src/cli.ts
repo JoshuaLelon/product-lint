@@ -13,7 +13,9 @@ import { renderAffectedKnowledgeForLlm, renderFileKnowledgeForLlm } from "./llms
 import { synchronizeStaged } from "./sync.js";
 import { checkCommitMessage, checkStagedCommit } from "./commit.js";
 import { initProject } from "./init.js";
-import { isWorkingTreeDirty } from "./git.js";
+import { isWorkingTreeDirty, stagedChanges } from "./git.js";
+import { affectedByTerm, vocabularyReport } from "./vocabulary.js";
+import { TERM_LEVELS } from "./types.js";
 
 function usage(): string {
   return `Product Lint
@@ -24,8 +26,9 @@ Usage:
   product-lint check [--json]
   product-lint frontier [--json]
   product-lint ship [--json]
+  product-lint vocabulary [--staged] [--json]
   product-lint knowledge for-file <path> [--json]
-  product-lint knowledge affected-by <node-id> [--json]
+  product-lint knowledge affected-by <node-id|term-id> [--json]
   product-lint knowledge slice <set=value,...> [--json]
   product-lint knowledge sync --staged [--json]
   product-lint commit check --staged [--json]
@@ -206,6 +209,46 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "vocabulary") {
+    const parsed = parseCommon(rest);
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    const snapshot = await createSnapshot(config, parsed.values.staged ? "staged" : "working");
+    const validation = await validateSnapshot(config, snapshot);
+    if (!validation.graph || hasErrors(validation.diagnostics)) {
+      process.stdout.write(formatDiagnostics(validation.diagnostics));
+      process.exitCode = 1;
+      return;
+    }
+    const changedPaths = parsed.values.staged
+      ? new Set(
+          (await stagedChanges(config.root)).flatMap((change) => [
+            change.path,
+            ...(change.oldPath ? [change.oldPath] : []),
+          ]),
+        )
+      : undefined;
+    const report = vocabularyReport([...validation.graph.nodes.values()], validation.terms, {
+      ...(changedPaths ? { changedPaths } : {}),
+    });
+    if (parsed.values.json) {
+      console.log(
+        stringifyJson({
+          terms: report.terms,
+          diagnostics: annotateDiagnostics(report.diagnostics),
+        }),
+      );
+      return;
+    }
+    const counts = TERM_LEVELS.map(
+      (level) => `${level} ${report.terms.filter((term) => term.level === level).length}`,
+    ).join(", ");
+    console.log(`terms declared (${report.terms.length}): ${counts}\n`);
+    process.stdout.write(formatDiagnostics(report.diagnostics));
+    // A review surface, never a gate: everything here is a judgement for a
+    // human, so the exit code stays 0 on findings.
+    return;
+  }
+
   if (command === "knowledge" || command === "llms") {
     const [action, subject, ...tail] = rest;
     if (!action || !subject) throw new Error(`Missing ${command} action or subject.\n\n${usage()}`);
@@ -238,7 +281,7 @@ async function main(): Promise<void> {
     }
     if (action === "for-file") {
       const result = knowledgeForFile(validation.graph, validation.references, subject);
-      if (command === "llms") process.stdout.write(renderFileKnowledgeForLlm(result));
+      if (command === "llms") process.stdout.write(renderFileKnowledgeForLlm(result, validation.terms));
       else if (parsed.values.json) console.log(stringifyJson(result));
       else {
         if (result.audience) console.log(`audience: ${result.audience}`);
@@ -270,8 +313,28 @@ async function main(): Promise<void> {
       return;
     }
     if (action === "affected-by") {
+      // A term's blast radius is every text that speaks the word, which is a
+      // different traversal from a node's descendants.
+      if (subject.startsWith("term.")) {
+        if (command === "llms") {
+          throw new Error("llms affected-by takes a node id. Use: product-lint knowledge affected-by <term-id>");
+        }
+        const result = affectedByTerm(
+          [...validation.graph.nodes.values()],
+          validation.terms,
+          subject,
+        );
+        if (parsed.values.json) console.log(stringifyJson(result));
+        else {
+          console.log(`term: ${result.term.id}`);
+          console.log(`name: ${result.term.name}`);
+          for (const node of result.nodes) console.log(`node: ${node.id}`);
+          for (const term of result.terms) console.log(`term: ${term.id}`);
+        }
+        return;
+      }
       const result = affectedByNode(validation.graph, validation.references, snapshot, subject);
-      if (command === "llms") process.stdout.write(renderAffectedKnowledgeForLlm(result));
+      if (command === "llms") process.stdout.write(renderAffectedKnowledgeForLlm(result, validation.terms));
       else if (parsed.values.json) console.log(stringifyJson(result));
       else {
         if (result.audience) console.log(`audience: ${result.audience}`);
