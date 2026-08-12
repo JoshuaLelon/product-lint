@@ -425,8 +425,10 @@ constrainedBy: audience.segment.studio
 ...
 ```
 
-The `llms` views carry the full statement of every node, plus the style and shape rules,
-because an agent that reads one usually goes on to edit a statement.
+The `llms` views carry the full statement of every node, plus the style, shape, and placement
+rules, because an agent that reads one usually goes on to edit a statement. A slice is a
+lineage, so it hides the level the shape rule is about — and shows the parent the placement
+rule is about.
 
 Product Lint traverses the source JSON on demand. It does not persist a generated full graph.
 
@@ -624,6 +626,50 @@ shape sets exist to avoid. And the general rule's repair for a duplicate is "add
 its constrainedBy instead", which cannot apply to a node that has no parents. So `PL0011` carries
 its own rule: n sets, each a partition, and a conjunction written as two parents rather than as a
 combined node.
+
+### Placing the node
+
+The same diagnostics carry a `placement` field. It is the third rule and the third scope:
+`style` is checked by reading one sentence, `shape` by reading the level, `placement` by
+reading a node beside its parent.
+
+```text
+A level is decided by what would make the statement false, not by what the statement is about.
+Name the smallest change that would force you to rewrite the sentence, then find that change below.
+audience: a kind of person appears, or two values become one.
+context: users stop having the problem. A context statement stays true even if you build nothing.
+product: you decide to promise something else. Name no surface here.
+behavior: someone uses the product and sees something else. Name the actor and the occasion.
+architecture: a responsibility moves across a boundary and the output does not change.
+mechanism: the code changes and the ownership model does not.
+Write the node at the shallowest level whose change would falsify it.
+```
+
+Placement is decided by what would *falsify* a statement, never by what the statement is about.
+Every level talks about the same product, so a subject matter test leaks at every boundary. The
+falsifier does not, because each level owns exactly one class of change — and a sentence with
+two falsifiers is not an ambiguous node, it is two nodes, which is the one-thing rule read down
+the graph instead of across a sentence.
+
+Neither of the other rules can catch what this one catches. A node that is well written, that
+overlaps no sibling, and that sits one level too deep reads correct all three times it is looked
+at. The rule ends with the pair check that finds it: **the child must be able to be false while
+the parent stays true.** If it cannot, the child restates its parent, and the level below it has
+nothing to constrain.
+
+Product and Behavior are the boundary that actually gets confused, because both are `ask-user`,
+both are about the user, and neither names a file. The `placement` rule separates them by the
+occasion: a Product rule holds everywhere and a Behavior happens somewhere. This is also why the
+Behavior question asks *when* — "what must a user, client, or system observe or do, and on what
+occasion". Asking what someone "should be able to" do is answerable by restating the Product rule
+with a modal in front of it, which fills the level without adding a claim.
+
+`PL0011` carries no `placement` rule, for the reason it carries its own `shape` rule: the pair
+check compares a node with its parent, and an Audience node has none.
+
+Like `shape`, this rule is delivered before the node is written rather than enforced after.
+`PL1104` can see that a parent exists one level up; nothing can see that the statement belongs
+there.
 
 ## Overlapping mechanisms
 

@@ -143,6 +143,8 @@ export interface Diagnostic {
   style?: string;
   /** How the node must sit beside its siblings, present when the fix adds one. */
   shape?: string;
+  /** How the node must sit under its parent, present when the fix adds one below a node. */
+  placement?: string;
   details?: Record<string, unknown>;
 }
 

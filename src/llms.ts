@@ -1,5 +1,5 @@
 import type { AffectedKnowledgeResult, FileKnowledgeResult, SourceCanonicalNode } from "./types.js";
-import { NODE_SHAPE, STATEMENT_STYLE } from "./remediation.js";
+import { LEVEL_PLACEMENT, NODE_SHAPE, STATEMENT_STYLE } from "./remediation.js";
 
 /**
  * An agent that reads this view usually goes on to change the file, which then
@@ -9,6 +9,11 @@ import { NODE_SHAPE, STATEMENT_STYLE } from "./remediation.js";
  * the graph, so an agent working from it sees a lineage and not the level. That
  * is the exact position from which a duplicate node gets written — the node that
  * already says this is a sibling the slice never showed.
+ *
+ * The placement rule travels for the opposite reason, which is why both belong
+ * here. A slice is exactly a lineage, so unlike the level, the parent IS on the
+ * page: this is the one view where an agent can run the pair check against the
+ * material in front of it rather than from memory.
  */
 function styleFooter(): string[] {
   return [
@@ -17,6 +22,9 @@ function styleFooter(): string[] {
     "",
     "# If you add a node",
     NODE_SHAPE,
+    "",
+    "# If you choose the level for a node",
+    LEVEL_PLACEMENT,
     "",
   ];
 }

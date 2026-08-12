@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.11.0
+
+A third authoring rule: which level a statement belongs at.
+
+- New `LEVEL_PLACEMENT` constant and a `placement` field on `Diagnostic`. It rides the same
+  codes as `NODE_SHAPE` — the ones about to make an agent add a node — and prints under
+  `placement:`. The two existing rules cannot catch what it catches: a node that is well
+  written, that overlaps no sibling, and that sits one level too deep reads correct all
+  three times it is looked at.
+- The rule decides a level by what would FALSIFY the statement, never by what the statement
+  is about. Every level talks about the same product, so a subject matter test leaks at every
+  boundary; each level owns exactly one class of change, so the falsifier does not. It carries
+  that change per level, the tie-break that makes the assignment unique (the shallowest level
+  whose change would falsify it), and the pair check — a child must be able to be false while
+  its parent stays true.
+- `PL0011 MISSING_AUDIENCE` carries no placement rule, for the reason it takes its own shape
+  rule: the pair check compares a node with its parent, and an Audience node has none.
+- The Behavior question now asks for the occasion: "What must a user, client, or system
+  observe or do, and on what occasion, because this product rule holds?" It used to ask what
+  someone "should be able to" observe or do, which is answerable by restating the Product rule
+  with a modal in front of it — a capability is a promise with a modal in front of it. That
+  fills the level without adding a claim, and the level below it then has nothing to constrain.
+  Product holds everywhere and Behavior happens somewhere, so the question asks for when.
+- The `knowledge file` and `knowledge affected` LLM views carry the placement rule too. The
+  shape rule travels with them because a slice hides the level; the placement rule travels for
+  the opposite reason — a slice IS a lineage, so it is the one view where the parent is on the
+  page and the pair check can be run against the material instead of from memory.
+
 ## 0.10.0
 
 Audience becomes a level, structured as n sets rather than one.

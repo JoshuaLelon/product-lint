@@ -40,6 +40,9 @@ export function formatDiagnostic(input: Diagnostic): string {
   if (diagnostic.ask) lines.push(wrap("ask", diagnostic.ask));
   if (diagnostic.style) lines.push(wrap("style", diagnostic.style));
   if (diagnostic.shape) lines.push(wrap("shape", diagnostic.shape));
+  // Widening scope, in the order a draft gets checked: the sentence, then the
+  // level it sits in, then the parent it sits under.
+  if (diagnostic.placement) lines.push(wrap("placement", diagnostic.placement));
   if (diagnostic.command) lines.push(`  run: ${diagnostic.command}`);
   // The shape rule says to read the level before adding to it. Printing the
   // rule without the level asks the reader to recall a set they have not seen,

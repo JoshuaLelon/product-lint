@@ -29,5 +29,6 @@ export {
   STATEMENT_STYLE,
   NODE_SHAPE,
   AUDIENCE_SHAPE,
+  LEVEL_PLACEMENT,
 } from "./remediation.js";
 export type * from "./types.js";

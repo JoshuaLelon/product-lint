@@ -62,8 +62,15 @@ export const LEVEL_AUTHORITY: Record<
     action: "ask-user",
     infer: false,
   },
+  // This question used to ask what someone "should be able to" observe or do,
+  // which invites the Product rule back in different verbs — a capability is
+  // just a promise with a modal in front of it. A Behavior that restates its
+  // parent leaves the level below it empty while the graph looks full. The
+  // occasion is what divides the two: a Product rule holds everywhere, and a
+  // Behavior happens somewhere, so the question asks for when.
   behavior: {
-    question: "What should a user, client, or system be able to observe or do because this product rule exists?",
+    question:
+      "What must a user, client, or system observe or do, and on what occasion, because this product rule holds?",
     action: "ask-user",
     infer: false,
   },

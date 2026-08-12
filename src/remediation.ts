@@ -219,6 +219,40 @@ export const AUDIENCE_SHAPE = [
   "Audience nodes have no parents. Name what no set distinguishes yet: a segment you can name is work, and one you cannot see is a wrong answer later.",
 ].join("\n");
 
+/**
+ * Which level a statement belongs at.
+ *
+ * The third rule, and the third scope. STATEMENT_STYLE is checked by reading one
+ * SENTENCE. NODE_SHAPE is checked by reading the LEVEL. This one is checked by
+ * reading a node beside its PARENT, and neither of the others can catch what it
+ * catches: a node that is well written, that overlaps no sibling, and that sits
+ * one level too deep reads correct all three times it is looked at.
+ *
+ * Placement is decided by what would FALSIFY the statement, never by what the
+ * statement is about. Every level talks about the same product, so a subject
+ * matter test leaks at every boundary; the falsifier does not, because each
+ * level owns exactly one class of change. A sentence with two falsifiers is not
+ * an ambiguous node, it is two nodes — the one-thing rule read down the graph
+ * instead of across a sentence.
+ *
+ * Not mechanically enforced, for the reason NODE_SHAPE is not. PL1104 can see
+ * that a parent exists one level up. Nothing can see that the statement belongs
+ * there.
+ */
+export const LEVEL_PLACEMENT = [
+  "A level is decided by what would make the statement false, not by what the statement is about.",
+  "Name the smallest change that would force you to rewrite the sentence, then find that change below.",
+  "audience: a kind of person appears, or two values become one.",
+  "context: users stop having the problem. A context statement stays true even if you build nothing.",
+  "product: you decide to promise something else. Name no surface here.",
+  "behavior: someone uses the product and sees something else. Name the actor and the occasion.",
+  "architecture: a responsibility moves across a boundary and the output does not change.",
+  "mechanism: the code changes and the ownership model does not.",
+  "Write the node at the shallowest level whose change would falsify it.",
+  "Product has no occasion and Behavior has one. If you cannot say when to go and watch it, you are still at Product.",
+  "The child must be able to be false while the parent stays true. If it cannot, do not write it — write the claim the parent does not already contain.",
+].join("\n");
+
 /** Diagnostics that ask a human or an agent to write prose. */
 const STYLE_CODES = new Set([
   "PL0011 MISSING_AUDIENCE",
@@ -237,6 +271,14 @@ const STYLE_CODES = new Set([
 /**
  * Diagnostics that are about to make an agent ADD a node. The shape rule is
  * useless after the fact and decisive before, so it rides only these.
+ *
+ * LEVEL_PLACEMENT rides the same set, for the same reason and with the same
+ * boundary: every code here names a level that has a level above it, which is
+ * what the pair check needs. PL0011 is absent because an Audience node has no
+ * parent, so "the child must be able to be false while the parent stays true"
+ * would send an agent looking for something the level forbids — the defect
+ * AUDIENCE_SHAPE exists to avoid. One set, not two identical ones, because two
+ * copies of the same six codes drift.
  */
 const SHAPE_CODES = new Set([
   "PL0001 MISSING_CONTEXT",
@@ -259,13 +301,16 @@ export function annotateDiagnostic(diagnostic: Diagnostic): Diagnostic {
       : SHAPE_CODES.has(diagnostic.code)
         ? NODE_SHAPE
         : undefined);
-  if (!fix && !ask && !style && !shape) return diagnostic;
+  const placement =
+    diagnostic.placement ?? (SHAPE_CODES.has(diagnostic.code) ? LEVEL_PLACEMENT : undefined);
+  if (!fix && !ask && !style && !shape && !placement) return diagnostic;
   return {
     ...diagnostic,
     ...(fix ? { fix } : {}),
     ...(ask ? { ask } : {}),
     ...(shape ? { shape } : {}),
     ...(style ? { style } : {}),
+    ...(placement ? { placement } : {}),
   };
 }
 
