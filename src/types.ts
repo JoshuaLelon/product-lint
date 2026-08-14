@@ -104,6 +104,10 @@ export interface GovernedPathConfig {
 
 export interface CommitConventionConfig {
   trailer?: string;
+  /** Trailer declaring a node deleted with its claim withdrawn. Default Knowledge-Removed. */
+  removedTrailer?: string;
+  /** Trailer declaring one claim restated: "<old-id> -> <new-id>". Default Knowledge-Renamed. */
+  renamedTrailer?: string;
   requireBody?: boolean;
   /**
    * Optional JavaScript regular expression the commit subject must match.
@@ -134,6 +138,8 @@ export interface ResolvedConfig {
   };
   commit: {
     trailer: string;
+    removedTrailer: string;
+    renamedTrailer: string;
     requireBody: boolean;
     subjectPattern?: string;
   };
@@ -254,15 +260,38 @@ export interface SyncResult {
   diagnostics: Diagnostic[];
 }
 
+export interface RenameDeclaration {
+  from: string;
+  to: string;
+}
+
+export interface RenamePair {
+  deletedId: string;
+  addedId: string;
+  similarity: number;
+  /** What convinced the matcher: the statement alone, or placement plus a shared word. */
+  basis: "statement" | "parents";
+}
+
+export interface DeletionClassification {
+  renames: RenamePair[];
+  /** Deleted ids paired with nothing. Sorted. */
+  removals: string[];
+}
+
 export interface CommitCheckResult {
   diagnostics: Diagnostic[];
   nodeChanges: NodeChangeClassification;
   changedImplementationFiles: GitChange[];
+  /** How each staged deletion reads: a rename with a successor, or a removal. */
+  deletions: DeletionClassification;
 }
 
 export interface CommitMessageResult {
   diagnostics: Diagnostic[];
   declared: Set<string>;
+  removed: Set<string>;
+  renamed: RenameDeclaration[];
   semantic: Set<string>;
 }
 

@@ -51,6 +51,8 @@ export async function loadConfig(cwd = process.cwd(), explicit?: string): Promis
     },
     commit: {
       trailer: input.commit?.trailer ?? "Knowledge-Change",
+      removedTrailer: input.commit?.removedTrailer ?? "Knowledge-Removed",
+      renamedTrailer: input.commit?.renamedTrailer ?? "Knowledge-Renamed",
       requireBody: input.commit?.requireBody ?? true,
       ...(input.commit?.subjectPattern ? { subjectPattern: input.commit.subjectPattern } : {}),
     },

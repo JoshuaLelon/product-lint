@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.13.0
+
+Deletions leave a record shaped like a deletion. A node could leave the graph without a
+trace as long as it was nobody's parent: a leaf deletion dangles no edge, the frontier is
+a boolean, and the required `Knowledge-Change:` trailer reads identically to an edit's —
+which is how an approved law was lost inside a hundred correct lines and restored by hand
+only because a person happened to reconcile a sidecar table.
+
+- **Two new trailers.** `Knowledge-Removed: <id>` declares a deletion whose claim is
+  withdrawn; `Knowledge-Renamed: <old-id> -> <new-id>` records one claim restated — the
+  deletion of its source and the addition of its target as one event, so the target owes
+  no separate `Knowledge-Change` line. Every deleted id must be declared exactly once,
+  as removed or as a renamed source. Many renamed sources may share one target: a merge,
+  recorded as such. Both names are configurable (`commit.removedTrailer`,
+  `commit.renamedTrailer`), like `commit.trailer` before them.
+- **The bookkeeping is enforced** (`commit message`): `PL2207 REMOVAL_DECLARED_AS_CHANGE`
+  (a deletion dressed as an edit — the camouflage, named), `PL2208
+  MISSING_REMOVAL_TRAILER`, `PL2209 SPURIOUS_REMOVAL_TRAILER`, and `PL2210
+  UNSTAGED_RENAME_TARGET`. `PL2201` extends across all three trailer kinds. A deletion
+  already required a trailer, so this changes the shape of the record, not its price:
+  the removal block of a commit is exactly as long as the destruction is wide, separate
+  from the change lines, and `git log --grep='^Knowledge-Removed:'` is a standing audit.
+- **The classification is reported, never enforced** (`commit check --staged`). Each
+  staged deletion is paired against the staged additions: statement similarity at
+  PL0802's threshold, or an identical parent set plus at least one shared content word —
+  because a real rename usually rewrites the statement and keeps its placement. A paired
+  deletion is `PL2109 NODE_RENAMED` carrying the suggested trailer line; textual evidence
+  reads as a note, placement-only evidence reads as a question (`ask-user`), because the
+  two mistakes are not the same size — a false removal adds a line, a false rename
+  suppresses the warning and the loss goes silent. An unpaired deletion is `PL2108
+  NODE_REMOVED`, a warning whose question carries the destroyed statement verbatim and
+  what its parent keeps. The pairing is a reading, not a fact: the trailer you write is
+  the record, and enforcement checks declarations against the diff alone.
+- **`PL2110 COVERAGE_NARROWED`**: a child that leaves its parent while staying in the
+  graph — the re-parent that quietly abandons a problem. Edge identity, not child counts:
+  a sweep replaces what it deletes and the count holds still. Both edge ends follow their
+  rename successors, so a pure rename never fires. Deleted children are `PL2108`'s event;
+  the two never double-fire.
+- Terms participate identically: a deleted `term.*` id classifies by definition
+  similarity and takes the same trailers. Non-leaf deletions were never the hole —
+  a dangling edge is `PL1102` and fatal — so all of this is scoped to leaves by
+  subtraction, not by a test.
+
 ## 0.12.0
 
 Vocabulary: terms declared where they are first needed, uses marked in prose.

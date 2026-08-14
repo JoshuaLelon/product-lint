@@ -22,6 +22,16 @@
       "additionalProperties": false,
       "properties": {
         "trailer": { "type": "string", "minLength": 1 },
+        "removedTrailer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Trailer declaring a node deleted with its claim withdrawn. Default Knowledge-Removed."
+        },
+        "renamedTrailer": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Trailer declaring one claim restated, in the form <old-id> -> <new-id>. Default Knowledge-Renamed."
+        },
         "requireBody": { "type": "boolean" },
         "subjectPattern": {
           "type": "string",

@@ -148,6 +148,15 @@ const FIXES: Record<string, string> = {
   "PL2106 UNGOVERNED_IMPLEMENTATION":
     "Do not create a Mechanism node yet. A Mechanism node needs an Architecture parent, and that level does not exist, so this repository must build the missing levels downward first. Start at the level named in requiredLevel and put the question below to the user. If this repository had code before it had Product Lint, narrow governedPaths.include in product-lint.config.json to the area you are modelling now, and widen it as each Mechanism node lands. See details.files for what is currently ungoverned.",
 
+  // Deletions. The classification is a reading and never blocks; the record it
+  // suggests is enforced against the diff by the commit-message codes below.
+  "PL2108 NODE_REMOVED":
+    'If the removal is intended, declare it: add "Knowledge-Removed: <node-id>" to the trailer block and say why in the body. If it is not, restore the node: git restore --staged --worktree --source=HEAD -- <path>.',
+  "PL2109 NODE_RENAMED":
+    'If this is one claim restated, declare one event: "Knowledge-Renamed: <old-id> -> <new-id>". If the old claim is genuinely withdrawn and the new node is unrelated, declare "Knowledge-Removed: <old-id>" instead. The pairing is a reading, not a fact — the trailer you write is the record.',
+  "PL2110 COVERAGE_NARROWED":
+    "The problem a parent states does not follow a child that moves away. Read what remains under this parent; if it still covers the problem, keep the move and say why in the body. If the move was incidental, restore the parent to the child's constrainedBy.",
+
   // Commit message
   "PL2201 DUPLICATE_KNOWLEDGE_TRAILER":
     "Delete the repeated trailer line. Declare each node id exactly one time.",
@@ -161,6 +170,14 @@ const FIXES: Record<string, string> = {
     "Rewrite the subject line to match commit.subjectPattern in product-lint.config.json. Only the subject is checked; the body and trailers are unaffected.",
   "PL2206 INVALID_SUBJECT_PATTERN":
     "Correct commit.subjectPattern in product-lint.config.json, or delete the field to leave the subject unconstrained.",
+  "PL2207 REMOVAL_DECLARED_AS_CHANGE":
+    'A deletion is not an edit. Replace this line with "Knowledge-Removed: <node-id>" — or "Knowledge-Renamed: <node-id> -> <new-id>" when a staged addition restates the claim.',
+  "PL2208 MISSING_REMOVAL_TRAILER":
+    'Add one trailer line for this deletion: "Knowledge-Removed: <node-id>" if the claim is withdrawn, or "Knowledge-Renamed: <node-id> -> <new-id>" if a staged addition restates it. Removal lines sit in the same trailer block as Knowledge-Change, one event per line.',
+  "PL2209 SPURIOUS_REMOVAL_TRAILER":
+    "Delete this trailer line, or stage the deletion it declares. Only an id the staged diff deletes may be declared removed or renamed.",
+  "PL2210 UNSTAGED_RENAME_TARGET":
+    'Point the trailer at the staged node that restates the claim, or declare "Knowledge-Removed: <old-id>" if nothing does.',
 
   // Vocabulary report. Judgement calls: detected, put to a human, never enforced.
   "PL0801 UNMARKED_TERM_USE":
@@ -189,6 +206,10 @@ const ASKS: Record<string, string> = {
     "If you cannot tell which reading is true, that is the finding. Show the user the sentence beside the definition and let them say what was meant.",
   "PL0802 SYNONYM_CANDIDATE":
     "This is a judgement, so put the pair and both definitions to the user and record only what they confirm.",
+  "PL2108 NODE_REMOVED":
+    "A removal destroys a claim someone approved, so it is confirmed, never inferred. Show the owner the statement and what its parent keeps, and record only what they confirm: removed on purpose, or restored.",
+  "PL2109 NODE_RENAMED":
+    "If you cannot tell whether the new statement is the old claim restated, that is the finding. Show the user both statements side by side and let them say which it is.",
 };
 
 /**

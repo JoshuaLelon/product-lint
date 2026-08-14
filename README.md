@@ -494,6 +494,65 @@ Validate a commit-message file:
 npx product-lint commit message .git/COMMIT_EDITMSG
 ```
 
+## Removing and renaming knowledge
+
+A node can leave the graph legitimately, and the two ways it happens look identical in a
+diff. A **rename** restates a claim under a new id; a **removal** withdraws it. Both are
+deletions, and a deletion that dangles no edge — a leaf, which is what most Mechanism
+nodes are — once left no record but a `Knowledge-Change:` line indistinguishable from an
+edit's. Deletions carry their own record instead:
+
+```text
+Knowledge-Removed: product.a-completion-can-be-taken-back
+Knowledge-Renamed: product.the-old-claim -> product.the-claim-restated
+```
+
+A `Knowledge-Renamed` line records one event — the deletion of its source and the addition
+of its target — so the target owes no separate `Knowledge-Change` line. Every deleted id
+must be declared exactly once, as removed or as a renamed source; `PL2207`–`PL2210` enforce
+the bookkeeping against the staged diff. A deletion already required a trailer, so this
+changes the shape of the record, not its price: the removal block of a commit is exactly as
+long as the destruction is wide, and `git log --grep='^Knowledge-Removed:'` is a standing
+audit of everything the graph ever gave up. Many renamed sources may share one target —
+a merge, recorded as such. Both trailer names are configurable, like `commit.trailer`.
+
+The staged check classifies each deletion before the message exists, and the
+classification is a reading, never a gate. A deleted id whose claim reappears — statement
+similarity at PL0802's threshold, or an identical parent set plus a shared content word,
+because a real rename usually rewrites the statement and keeps its placement — is
+`PL2109 NODE_RENAMED`, carrying the suggested trailer line. Textual evidence reads as a
+note; placement-only evidence reads as a question, because the two mistakes are not the
+same size — a false removal adds a line, a false rename suppresses the warning below and
+the loss goes silent. A deleted id nothing replaces is:
+
+```text
+PL2108 NODE_REMOVED mechanism.approval-command is deleted, and nothing staged replaces it.
+  path: docs/mechanism/approval-command.json
+  node: mechanism.approval-command
+  question: Withdraw this claim? "Approval is implemented by an application command." Under
+            architecture.approval-owner, 0 other mechanism node(s) remain.
+  fix: If the removal is intended, declare it: add "Knowledge-Removed: <node-id>" to the
+       trailer block and say why in the body. If it is not, restore the node: git restore
+       --staged --worktree --source=HEAD -- <path>.
+  ask: A removal destroys a claim someone approved, so it is confirmed, never inferred. Show
+       the owner the statement and what its parent keeps, and record only what they confirm:
+       removed on purpose, or restored.
+```
+
+A warning, not an error — if removing a node becomes a fight, pruning stops and the graph
+rots. The question carries the destroyed statement verbatim because the reader must see
+what is being destroyed without checking out a file that no longer exists.
+
+`PL2110 COVERAGE_NARROWED` names the third event: a child that leaves its parent while
+staying in the graph — the re-parent that quietly abandons a problem. It compares edge
+identity, not child counts, because a sweep replaces what it deletes and the count holds
+still; both edge ends follow their rename successors, so a pure rename never fires. A
+deleted child is `PL2108`'s event, and the two never double-fire.
+
+None of this reaches a node with children: deleting a parent dangles its children's
+`constrainedBy` and dies in validation (`PL1102`), so the checks are scoped to leaves by
+subtraction, not by a test.
+
 ## Hooks
 
 `product-lint init` installs this Lefthook configuration for you:

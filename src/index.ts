@@ -22,6 +22,7 @@ export {
   synchronizationDiagnostics,
 } from "./sync.js";
 export { checkStagedCommit, checkCommitMessage, classifyNodeChanges, classifyTermChanges } from "./commit.js";
+export { classifyDeletions, deletionDiagnostics } from "./removal.js";
 export {
   buildVocabulary,
   loadTermNodes,

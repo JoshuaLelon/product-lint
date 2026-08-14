@@ -20,6 +20,8 @@
   },
   "commit": {
     "trailer": "Knowledge-Change",
+    "removedTrailer": "Knowledge-Removed",
+    "renamedTrailer": "Knowledge-Renamed",
     "requireBody": true
   }
 }

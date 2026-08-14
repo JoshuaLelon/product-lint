@@ -7,6 +7,7 @@ import type {
   GitChange,
   KnowledgeGraph,
   NodeChangeClassification,
+  RenameDeclaration,
   ResolvedConfig,
   SourceCanonicalNode,
 } from "./types.js";
@@ -40,6 +41,7 @@ import {
   termFingerprint,
 } from "./terms.js";
 import { unmarkedUseDiagnostics } from "./vocabulary.js";
+import { classifyDeletions, deletionDiagnostics } from "./removal.js";
 
 function emptyClassification(): NodeChangeClassification {
   return {
@@ -179,9 +181,20 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
   const changedImplementationFiles = changes.filter(
     (change) => isGoverned(config, change.path) || Boolean(change.oldPath && isGoverned(config, change.oldPath)),
   );
+  // Classified before the early return below can fire, so the message check —
+  // which needs the deleted set either way — always has it. A deletion that
+  // dangles a child never reaches this point as a leaf case: PL1102 is already
+  // in the diagnostics and the commit dies on it.
+  const deletions = classifyDeletions(
+    headValidation.graph,
+    stagedValidation.graph,
+    headValidation.terms,
+    stagedValidation.terms,
+    nodeChanges,
+  );
 
   if (!stagedValidation.graph || diagnostics.some((item) => item.severity === "error")) {
-    return { diagnostics, nodeChanges, changedImplementationFiles };
+    return { diagnostics, nodeChanges, changedImplementationFiles, deletions };
   }
 
   diagnostics.push(
@@ -362,6 +375,21 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
 
   diagnostics.push(...widenedAudiences(headValidation.graph, stagedValidation.graph));
 
+  // A node can leave this graph silently as long as it was nobody's parent.
+  // Deletion detection is the trivial half — the deleted set sits right above —
+  // and intent is the half nobody holds at this point in the cross-session
+  // workflow, so it is classified and reported, never inferred into a block.
+  diagnostics.push(
+    ...deletionDiagnostics(
+      deletions,
+      headValidation.graph,
+      stagedValidation.graph,
+      headValidation.terms,
+      stagedValidation.terms,
+      config,
+    ),
+  );
+
   // The one moment a mark costs two characters in a file already open and
   // already owed a trailer. Info only, scoped to the statements this diff
   // touches; the standing backlog stays in `product-lint vocabulary`.
@@ -370,7 +398,7 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
   );
   diagnostics.push(...unmarkedUseDiagnostics(changedStatementNodes, stagedValidation.terms));
 
-  return { diagnostics, nodeChanges, changedImplementationFiles };
+  return { diagnostics, nodeChanges, changedImplementationFiles, deletions };
 }
 
 /** Every id whose text marks the term: statements in the graph, definitions in the vocabulary. */
@@ -439,24 +467,71 @@ export function widenedAudiences(
   return diagnostics;
 }
 
-function parseCommitMessage(text: string, trailer: string): {
+interface ParsedCommitMessage {
   declared: Set<string>;
+  duplicates: string[];
+  removed: Set<string>;
+  /** Ids declared deleted more than once, across Removed lines and Renamed sources. */
+  removalDuplicates: string[];
+  renamed: RenameDeclaration[];
+  /** Renamed trailer values that do not parse as "<old-id> -> <new-id>". */
+  malformedRenames: string[];
   subject: string;
   body: string;
-  duplicates: string[];
-} {
+}
+
+function escapePattern(name: string): string {
+  return name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function parseCommitMessage(
+  text: string,
+  trailers: { change: string; removed: string; renamed: string },
+): ParsedCommitMessage {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const declared = new Set<string>();
   const duplicates: string[] = [];
-  const trailerPattern = new RegExp(`^${trailer.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*(\\S+)\\s*$`);
+  const removed = new Set<string>();
+  const removalDuplicates: string[] = [];
+  const renamed: RenameDeclaration[] = [];
+  const malformedRenames: string[] = [];
+  const changePattern = new RegExp(`^${escapePattern(trailers.change)}:\\s*(\\S+)\\s*$`);
+  const removedPattern = new RegExp(`^${escapePattern(trailers.removed)}:\\s*(\\S+)\\s*$`);
+  const renamedPattern = new RegExp(`^${escapePattern(trailers.renamed)}:\\s*(\\S.*?)\\s*$`);
+  const removalSources = new Set<string>();
+  const declareRemoval = (id: string) => {
+    if (removalSources.has(id)) removalDuplicates.push(id);
+    removalSources.add(id);
+  };
   const trailerIndexes = new Set<number>();
   for (let index = 0; index < lines.length; index += 1) {
-    const match = lines[index]?.match(trailerPattern);
-    if (!match) continue;
-    const id = match[1]!;
-    if (declared.has(id)) duplicates.push(id);
-    declared.add(id);
-    trailerIndexes.add(index);
+    const line = lines[index]!;
+    const change = line.match(changePattern);
+    if (change) {
+      const id = change[1]!;
+      if (declared.has(id)) duplicates.push(id);
+      declared.add(id);
+      trailerIndexes.add(index);
+      continue;
+    }
+    const removal = line.match(removedPattern);
+    if (removal) {
+      declareRemoval(removal[1]!);
+      removed.add(removal[1]!);
+      trailerIndexes.add(index);
+      continue;
+    }
+    const rename = line.match(renamedPattern);
+    if (rename) {
+      const pair = rename[1]!.match(/^(\S+)\s*->\s*(\S+)$/);
+      if (pair) {
+        declareRemoval(pair[1]!);
+        renamed.push({ from: pair[1]!, to: pair[2]! });
+      } else {
+        malformedRenames.push(rename[1]!);
+      }
+      trailerIndexes.add(index);
+    }
   }
   const meaningful = lines.map((line, index) => ({ line, index })).filter(
     ({ line }) => line.trim().length > 0 && !line.trimStart().startsWith("#"),
@@ -472,7 +547,16 @@ function parseCommitMessage(text: string, trailer: string): {
     .join("\n")
     .trim();
   const subject = firstNonEmpty >= 0 ? lines[firstNonEmpty]!.trim() : "";
-  return { declared, subject, body, duplicates };
+  return {
+    declared,
+    duplicates,
+    removed,
+    removalDuplicates,
+    renamed,
+    malformedRenames,
+    subject,
+    body,
+  };
 }
 
 export async function checkCommitMessage(
@@ -482,7 +566,13 @@ export async function checkCommitMessage(
   const message = await readFile(messageFile, "utf8");
   const staged = await checkStagedCommit(config);
   const semantic = staged.nodeChanges.semantic;
-  const parsed = parseCommitMessage(message, config.commit.trailer);
+  const deleted = staged.nodeChanges.deleted;
+  const added = staged.nodeChanges.added;
+  const parsed = parseCommitMessage(message, {
+    change: config.commit.trailer,
+    removed: config.commit.removedTrailer,
+    renamed: config.commit.renamedTrailer,
+  });
   const diagnostics: Diagnostic[] = [...staged.diagnostics];
 
   for (const id of parsed.duplicates) {
@@ -493,8 +583,33 @@ export async function checkCommitMessage(
       nodeId: id,
     });
   }
+  for (const id of parsed.removalDuplicates) {
+    diagnostics.push({
+      code: "PL2201 DUPLICATE_KNOWLEDGE_TRAILER",
+      severity: "error",
+      message:
+        `Duplicate removal declaration for ${id}. Declare each deleted id exactly once, ` +
+        `as ${config.commit.removedTrailer} or as a ${config.commit.renamedTrailer} source.`,
+      nodeId: id,
+    });
+  }
+  for (const raw of parsed.malformedRenames) {
+    diagnostics.push({
+      code: "PL2210 UNSTAGED_RENAME_TARGET",
+      severity: "error",
+      message: `${config.commit.renamedTrailer} line "${raw}" is not of the form <old-id> -> <new-id>.`,
+    });
+  }
+
+  // A Renamed line records one event: the deletion of its source and the
+  // addition of its target. The target therefore owes no separate change
+  // trailer, and writing one anyway is the spurious case below.
+  const renamedTargets = new Set(parsed.renamed.map((pair) => pair.to));
+  const removalDeclared = new Set([...parsed.removed, ...parsed.renamed.map((pair) => pair.from)]);
+
   for (const id of semantic) {
-    if (!parsed.declared.has(id)) {
+    if (deleted.has(id)) continue;
+    if (!parsed.declared.has(id) && !renamedTargets.has(id)) {
       diagnostics.push({
         code: "PL2202 MISSING_KNOWLEDGE_TRAILER",
         severity: "error",
@@ -504,11 +619,74 @@ export async function checkCommitMessage(
     }
   }
   for (const id of parsed.declared) {
+    // A deletion is not an edit: declaring one as a change is the exact
+    // camouflage that hid a lost law inside a hundred identical lines, so it
+    // is named its own error rather than folded into the spurious case.
+    if (deleted.has(id)) {
+      diagnostics.push({
+        code: "PL2207 REMOVAL_DECLARED_AS_CHANGE",
+        severity: "error",
+        message: `${config.commit.trailer} declares ${id}, but the staged diff deletes it.`,
+        nodeId: id,
+      });
+      continue;
+    }
     if (!semantic.has(id)) {
       diagnostics.push({
         code: "PL2203 SPURIOUS_KNOWLEDGE_TRAILER",
         severity: "error",
         message: `${config.commit.trailer} declares ${id}, but it has no semantic staged change.`,
+        nodeId: id,
+      });
+      continue;
+    }
+    if (renamedTargets.has(id)) {
+      diagnostics.push({
+        code: "PL2203 SPURIOUS_KNOWLEDGE_TRAILER",
+        severity: "error",
+        message:
+          `${config.commit.trailer} declares ${id}, but ${config.commit.renamedTrailer} ` +
+          `already records it. One event, one line.`,
+        nodeId: id,
+      });
+    }
+  }
+  for (const id of [...parsed.removed].sort()) {
+    if (!deleted.has(id)) {
+      diagnostics.push({
+        code: "PL2209 SPURIOUS_REMOVAL_TRAILER",
+        severity: "error",
+        message: `${config.commit.removedTrailer} declares ${id}, but the staged diff does not delete it.`,
+        nodeId: id,
+      });
+    }
+  }
+  for (const pair of parsed.renamed) {
+    if (!deleted.has(pair.from)) {
+      diagnostics.push({
+        code: "PL2209 SPURIOUS_REMOVAL_TRAILER",
+        severity: "error",
+        message: `${config.commit.renamedTrailer} declares ${pair.from}, but the staged diff does not delete it.`,
+        nodeId: pair.from,
+      });
+    }
+    if (!added.has(pair.to)) {
+      diagnostics.push({
+        code: "PL2210 UNSTAGED_RENAME_TARGET",
+        severity: "error",
+        message:
+          `${config.commit.renamedTrailer} points ${pair.from} at ${pair.to}, ` +
+          `but ${pair.to} is not added in this diff.`,
+        nodeId: pair.from,
+      });
+    }
+  }
+  for (const id of [...deleted].sort()) {
+    if (!removalDeclared.has(id)) {
+      diagnostics.push({
+        code: "PL2208 MISSING_REMOVAL_TRAILER",
+        severity: "error",
+        message: `Staged deletion of ${id} is not declared.`,
         nodeId: id,
       });
     }
@@ -543,5 +721,11 @@ export async function checkCommitMessage(
     });
   }
 
-  return { diagnostics, declared: parsed.declared, semantic };
+  return {
+    diagnostics,
+    declared: parsed.declared,
+    removed: parsed.removed,
+    renamed: parsed.renamed,
+    semantic,
+  };
 }

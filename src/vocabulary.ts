@@ -24,7 +24,7 @@ function withoutQuoted(text: string): string {
     .replace(/(^|[\s([—-])'([^'\n]*)'(?=$|[\s).,;:!?—])/g, "$1 ");
 }
 
-function tokenize(text: string): string[] {
+export function tokenize(text: string): string[] {
   return [...text.matchAll(/[A-Za-z0-9][A-Za-z0-9']*/g)].map((match) => match[0].toLowerCase());
 }
 
@@ -107,7 +107,7 @@ const STOPWORDS = new Set([
   "which", "who", "with",
 ]);
 
-function contentTokens(definition: string): Set<string> {
+export function contentTokens(definition: string): Set<string> {
   return new Set(tokenize(definition).filter((token) => !STOPWORDS.has(token)));
 }
 
