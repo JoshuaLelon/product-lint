@@ -101,21 +101,6 @@ export function formatDiagnostic(input: Diagnostic): string {
   const whenFine = diagnostic.details?.whenFine;
   if (typeof whenFine === "string") lines.push(wrap("when fine", whenFine));
 
-  // Placeholders, shallowest level first. The question prints once per level
-  // rather than once per node: eighteen drafts across three modules is six
-  // distinct questions, and repeating each one three times turned a summary
-  // into thirty-six lines of the same sentence.
-  const drafts = diagnostic.details?.drafts as
-    | { level: string; question: string; ids: string[] }[]
-    | undefined;
-  if (Array.isArray(drafts) && drafts.length > 0) {
-    lines.push("  shallowest level first, because that is the order of leverage:");
-    for (const group of drafts) {
-      lines.push(`    ${group.level} (${group.ids.length})  ${group.question}`);
-      lines.push(`      ${group.ids.join(", ")}`);
-    }
-  }
-
   // A report row that speaks for many statements names them, folded under one
   // heading per term the way a long file list folds into a tree — so a common
   // word reads as one block instead of drowning the rare findings.

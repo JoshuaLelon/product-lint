@@ -986,6 +986,7 @@ report. Each one answers a different question, and each names the next one down.
 | `check` | where does the whole graph stand? | ~10 rows |
 | `check --full` | what are all the repairs? | every finding, with its block |
 | `frontier` | write me the next node | one work order |
+| `diff [<ref>]` | what did this branch change about the product? | claims added, withdrawn, restated |
 
 The layering matters most at the bottom. **`frontier` is not a report, it is a work order**:
 it carries the node template, the level's authority question, the sibling nodes to read
@@ -1170,6 +1171,45 @@ Adding the next smell is one entry in `SMELLS` and one `detect()` — the harnes
 the two rules, the ordering (shallowest level first, because that is the order of leverage),
 the ignore handling, and the rendering.
 
+## What a change did to the product
+
+```bash
+npx product-lint diff              # against HEAD: what have I changed?
+npx product-lint diff main         # the review question, for a branch
+```
+
+`git diff` answers a different question and cannot answer this one. A rename plus a rewrite
+is two file changes and one claim restated. A digest churn across forty descendants is forty
+file changes and no claim at all. `diff` reports **claims** — added, withdrawn, restated —
+shallowest level first, with the before and after text.
+
+It reuses `classifyNodeChanges` and `classifyDeletions` rather than reimplementing them, so
+the diff and the commit path can never disagree about what counts as a claim changing, or
+about whether a removal-plus-addition was one claim renamed. A term redefinition is called
+out separately and says that it reaches every use, because that is never a small change
+however small the edit looked.
+
+When either side does not build, it says so rather than showing the arithmetic. A graph with
+no nodes makes every node on the other side read as added or withdrawn — a rename that forgot
+to re-parent its children reported the entire product as deleted.
+
+## Standing mistakes
+
+`docs/reference/*.json` with `kind: "mistake"` is the one place this tool records that a claim
+was **wrong**. Everything else it checks is missing, stale, or badly shaped — facts about
+form. Nothing says a statement is false, and nothing can, because that is a judgement.
+
+`PL0920 STANDING_MISTAKE` reports a mistake while the node it names has **not changed since
+the commit that recorded it**. A claim someone revised after learning it was wrong has been
+answered, and repeating it forever would train a reader to skip the one report carrying
+hard-won knowledge. Like every judgement finding it says when the shape is fine: the mistake
+may have been about the implementation rather than the claim, and recording that is a
+one-line edit to the reference.
+
+Until this existed, references were read by `knowledge for-file` and `affected-by` and by
+nothing else — so the most expensive knowledge in the repository, the kind you only get by
+being wrong, was the least likely to be seen again.
+
 ## Overlapping mechanisms
 
 Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
@@ -1223,6 +1263,7 @@ product-lint check [--all] [--full] [--json]
 product-lint frontier [--all] [--json]
 product-lint ship [--all] [--full] [--json]
 product-lint adopt <path>... | --all [--json]
+product-lint diff [<ref>] [--json]
 product-lint smells [--all] [--json]
 product-lint vocabulary [--staged] [--json]
 product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]

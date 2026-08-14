@@ -12,6 +12,9 @@ export {
 export { resolveScope, scopeDiagnostics } from "./scope.js";
 export { adopt, clusterDirectories, slugFor } from "./adopt.js";
 export { SMELLS, detectSmells, smellConfigDiagnostics } from "./smells.js";
+export { standingMistakeDiagnostics } from "./mistakes.js";
+export { diffGraph, renderGraphDiff } from "./diff.js";
+export type { ClaimChange, GraphDiff } from "./diff.js";
 export { labelFor, renderBrief, renderRefusal, renderSummary, summaryRows } from "./summary.js";
 export type { SummaryInput, SummaryRow } from "./summary.js";
 export type { SmellDefinition, SmellFinding, SmellReport } from "./smells.js";
@@ -63,7 +66,7 @@ export {
 } from "./vocabulary.js";
 export { inspectSnapshot, inspectWorkingTree } from "./status.js";
 export { renderFileKnowledgeForLlm, renderAffectedKnowledgeForLlm } from "./llms.js";
-export { createSnapshot } from "./repository.js";
+export { createRefSnapshot, createSnapshot } from "./repository.js";
 export { initProject } from "./init.js";
 export { formatDiagnostic, formatDiagnostics, hasErrors } from "./diagnostics.js";
 export {

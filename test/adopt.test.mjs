@@ -16,6 +16,7 @@ import {
   hasErrors,
   inspectWorkingTree,
   loadConfig,
+  orderedObligations,
   placeholderStatement,
   validateSnapshot,
 } from "../dist/index.js";
@@ -92,13 +93,18 @@ test("ship refuses while a draft remains, and check does not", async () => {
   await git(root, "add", "docs");
 
   const status = await inspectWorkingTree(await loadConfig(root));
-  const draft = status.frontier.diagnostics.find((item) => item.code === "PL0901 DRAFT_NODE");
-  assert.ok(draft, "a placeholder is the most visible thing in the report");
-  assert.equal(draft.severity, "info");
-  // Shallowest level first, because that is the order of leverage: sorted by id
-  // instead, architecture came out on top of the report.
+  const drafts = status.frontier.diagnostics.filter((item) => item.code === "PL0901 DRAFT_NODE");
+  assert.equal(drafts.length, 6, "one obligation per placeholder, not one row for all of them");
+  assert.equal(drafts[0].severity, "info");
+  // A draft IS a frontier obligation: a missing node owes existence, a draft
+  // owes a statement, and both are answered by reading the level and the terms
+  // and answering the level's question. So it carries the same work order.
+  const audience = drafts.find((item) => item.requiredLevel === "audience");
+  assert.equal(audience.frontier, "audience.draft");
+  assert.match(audience.question, /Who is this product for/);
+  assert.ok(audience.details.level, "the siblings to read before writing a duplicate");
   assert.deepEqual(
-    draft.details.drafts.map((group) => group.level),
+    orderedObligations(drafts).map((item) => item.requiredLevel),
     ["audience", "context", "product", "behavior", "architecture", "mechanism"],
   );
   // Not done. `ship` means terminal completeness, and file bindings under

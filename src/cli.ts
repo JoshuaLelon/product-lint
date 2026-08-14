@@ -7,7 +7,7 @@ import { renderBrief, renderRefusal, renderSummary } from "./summary.js";
 import { loadConfig } from "./config.js";
 import { formatDiagnostics, hasErrors } from "./diagnostics.js";
 import { annotateDiagnostics } from "./remediation.js";
-import { createSnapshot } from "./repository.js";
+import { createRefSnapshot, createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { inspectSnapshot, inspectWorkingTree } from "./status.js";
 import { knowledgeForFile, affectedByNode, sliceForAudience } from "./queries.js";
@@ -19,6 +19,7 @@ import { isWorkingTreeDirty, stagedChanges } from "./git.js";
 import { affectedByTerm, vocabularyReport } from "./vocabulary.js";
 import { loadTermNodes, recordRejection, serializeTermNode } from "./terms.js";
 import { adopt } from "./adopt.js";
+import { diffGraph, renderGraphDiff } from "./diff.js";
 import { obligationsFor, orderedObligations } from "./frontier.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
 
@@ -33,6 +34,7 @@ Usage:
   product-lint frontier [<node-id>] [--all] [--full] [--json]
   product-lint ship [--all] [--full] [--json]
   product-lint adopt <path>... | --all [--json]
+  product-lint diff [<ref>] [--json]
   product-lint smells [--all] [--json]
   product-lint vocabulary [--staged] [--json]
   product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
@@ -121,6 +123,9 @@ async function statusReport(
   // Shape is a review and never a gate, so it joins what is reported and stays
   // out of what decides the exit code.
   const smells = status.smells.diagnostics;
+  // A recorded mistake is knowledge, not a fault, so it reports beside the shape
+  // findings and stays out of the exit code.
+  const mistakes = status.mistakes;
   const dirty = command === "ship" ? await isWorkingTreeDirty(config.root) : false;
   const shipDiagnostics: Diagnostic[] = dirty
     ? [
@@ -140,7 +145,7 @@ async function statusReport(
     all:
       command === "frontier"
         ? frontier
-        : [...structural, ...sync, ...frontier, ...smells, ...shipDiagnostics],
+        : [...structural, ...sync, ...frontier, ...smells, ...mistakes, ...shipDiagnostics],
     blocking: [...structural, ...sync, ...shipDiagnostics],
   };
 }
@@ -310,6 +315,24 @@ async function main(): Promise<void> {
       );
     }
     applyStatusExitCode(report);
+    return;
+  }
+
+  if (command === "diff") {
+    const parsed = parseCommon(rest, true);
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    // Defaults to HEAD, which answers "what did I change" for uncommitted work.
+    // A ref answers the review question: what did this branch change about the
+    // product, as against what it changed in files.
+    const base = parsed.positionals[0] ?? "HEAD";
+    const result = await diffGraph(
+      config,
+      await createRefSnapshot(config, base),
+      await createSnapshot(config, "working"),
+      base,
+    );
+    if (parsed.values.json) console.log(stringifyJson(result));
+    else process.stdout.write(renderGraphDiff(result));
     return;
   }
 

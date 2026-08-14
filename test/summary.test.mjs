@@ -74,25 +74,19 @@ test("findings of one code at one level fold into a row that keeps the count", (
   assert.equal(rows[0].exemplar, "src/a.ts", "a row is actionable without expanding it");
 });
 
-test("drafts expand per level, because sixteen of them are not one job", () => {
+test("drafts group per level without a special case, because each is its own obligation", () => {
   const rows = summaryRows(
     [
-      {
-        code: "PL0901 DRAFT_NODE",
-        severity: "info",
-        message: "x",
-        details: {
-          drafts: [
-            { level: "context", ids: ["context.draft-a", "context.draft-b"] },
-            { level: "product", ids: ["product.draft-a"] },
-          ],
-        },
-      },
+      { code: "PL0901 DRAFT_NODE", severity: "info", message: "x", requiredLevel: "context", frontier: "context.draft-a" },
+      { code: "PL0901 DRAFT_NODE", severity: "info", message: "x", requiredLevel: "context", frontier: "context.draft-b" },
+      { code: "PL0901 DRAFT_NODE", severity: "info", message: "x", requiredLevel: "product", frontier: "product.draft-a" },
     ],
     graph,
   );
-  // Folding them into one row would hide the only ordering that matters for
-  // them: a context job first, and then a product job.
+  // Sixteen drafts are not one job: a context job first, then a product job.
+  // This used to need an expansion special case, because PL0901 was one
+  // diagnostic carrying a per-level split. One diagnostic per node gets the
+  // same rows out of the ordinary (severity, level, code) grouping.
   assert.deepEqual(
     rows.map((row) => [row.level, row.count]),
     [

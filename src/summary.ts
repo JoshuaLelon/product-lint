@@ -65,25 +65,19 @@ function levelOf(diagnostic: Diagnostic, graph?: KnowledgeGraph): KnowledgeLevel
 }
 
 /**
- * `PL0901` already carries its per-level split, and it is the one diagnostic
- * that speaks for several levels at once. Folding it into a single row would
- * hide the only ordering that matters for it — sixteen drafts are not one job,
- * they are a context job and then a product job.
+ * One row per diagnostic, except where a diagnostic already speaks for many
+ * subjects — a file list is one finding about N files, and counting it as one
+ * would understate the job by the size of the list.
+ *
+ * Drafts used to be special-cased here, because `PL0901` was a single
+ * diagnostic carrying a per-level split. It is now one diagnostic per node, so
+ * the ordinary (severity, level, code) grouping produces the same rows without
+ * the exception.
  */
 function expand(
   diagnostic: Diagnostic,
   graph?: KnowledgeGraph,
 ): { level?: KnowledgeLevel; count: number; exemplar?: string }[] {
-  const drafts = diagnostic.details?.drafts as
-    | { level: KnowledgeLevel; ids: string[] }[]
-    | undefined;
-  if (Array.isArray(drafts) && drafts.length > 0) {
-    return drafts.map((group) => ({
-      level: group.level,
-      count: group.ids.length,
-      exemplar: group.ids[0],
-    }));
-  }
   const files = diagnostic.details?.files;
   const count = Array.isArray(files) && files.length > 0 ? files.length : 1;
   const exemplar =
@@ -182,11 +176,26 @@ export function renderSummary(input: SummaryInput): string {
     // A row that names a missing node is not a repair to read, it is a node to
     // write, and the work order for writing it lives somewhere else. Without
     // this line the summary tells you what is wrong and strands you there.
+    const next: [string, string][] = [];
     if (input.diagnostics.some(isFrontierObligation)) {
-      lines.push("  product-lint frontier         the work order for the next node to write");
+      next.push(["product-lint frontier", "the work order for the next node to write"]);
     }
-    lines.push("  product-lint check --full     every finding with its repair");
-    if (input.scope) lines.push("  product-lint check --all      include the deferred problems");
+    // A shape finding's subject is a whole subtree, so what makes it legible is
+    // the lineage under it rather than the finding's own text. Every other row
+    // type names its next command; leaving these two without one is the
+    // strand-the-reader failure in a smaller costume.
+    const subject = input.diagnostics.find(
+      (item) => /^PL09[12]/.test(item.code) && item.nodeId,
+    )?.nodeId;
+    if (subject) {
+      next.push([`product-lint llms affected-by ${subject}`, "what a shape finding covers"]);
+    }
+    next.push(["product-lint check --full", "every finding with its repair"]);
+    if (input.scope) next.push(["product-lint check --all", "include the deferred problems"]);
+    const width = Math.max(...next.map(([command]) => command.length));
+    for (const [command, description] of next) {
+      lines.push(`  ${pad(command, width)}   ${description}`);
+    }
   }
   return `${lines.join("\n")}\n`;
 }

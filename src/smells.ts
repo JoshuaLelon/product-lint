@@ -75,6 +75,52 @@ const IMBALANCE = {
   share: 0.6,
 } as const;
 
+/**
+ * UNBUILT, and deliberately: the restructuring this smell tells you to perform.
+ *
+ * `imbalance`'s repair is "split it and re-parent its children", and
+ * `PL0802 SYNONYM_CANDIDATE`'s is "delete one term and rewrite the loser's
+ * uses". Both mean: delete N nodes, add M, rewrite `constrainedBy` on K
+ * children. `constrainedBy` is inside `semanticProjection`, so every re-parented
+ * child is a semantic change and `PL2202` demands a declaration for each.
+ * Splitting `context.core` with six product-law children is nine trailers for
+ * one decision. (Only nine: the descendants of those six go stale too, but their
+ * rewrites are `synchronizationOnly` and owe nothing.) The newest feature here
+ * prescribes the most expensive operation in the tool.
+ *
+ * Three shapes, kept here rather than in a document that nothing keeps honest,
+ * so the choice can be made when the dogfood produces a real split:
+ *
+ * 1. CALCULATOR. `restructure plan split <id> --into a,b` prints the
+ *    consequence — which children move, what goes stale — plus a copy-paste
+ *    trailer block, and writes nothing. Trailers stay at nine; the tool only
+ *    removes the arithmetic. No state, no new trailer form, no new lifecycle.
+ *    Cannot guarantee the plan is what gets written.
+ * 2. WRITER. `split <id> --into a --take x,y --into b --take z` writes both new
+ *    nodes as `draft: true`, rewrites the children, deletes the original; the
+ *    statements stay the author's job. Adds `Knowledge-Restructured: old -> a, b`
+ *    by direct analogy with `Knowledge-Renamed`, which already collapses two node
+ *    events into one declaration — so nine trailers become one, and it is
+ *    CHECKABLE: the commit path can verify each child moved from source to a
+ *    declared target. Cannot express a chain, and forces drafts even on a pure
+ *    re-parent that needs no new prose.
+ * 3. TRANSACTION. `restructure begin/split/reparent/merge/apply` appends
+ *    operations to a log, replays at apply, commits the log as the record. One
+ *    trailer; the only shape where a multi-step refactor reads in history as one
+ *    decision with its reasoning. Costs on-disk state, a begin/abandon/apply
+ *    lifecycle, a reaper for abandoned logs, and the log is a second copy of a
+ *    derivable fact once applied — the sidecar pattern that gets deleted later.
+ *
+ * What decides it, watched while walking a real graph up: how many nodes a
+ * restructure actually touches (two or three makes the trailer problem
+ * imaginary and shape 1 the whole answer); whether splits produce new problems
+ * needing prose or are pure re-parenting (shape 2's drafts are wrong for the
+ * second, holding `ship` red over nodes owing nothing); whether restructures
+ * chain (only chaining justifies shape 3); whether `classifyDeletions`'
+ * similarity matcher mis-pairs when both new nodes partly resemble the original;
+ * and whether nine pasted trailer lines are actually annoying. The cheapest
+ * honest outcome is that they are fine and the right build is shape 1, or none.
+ */
 const imbalance: SmellDefinition = {
   name: "imbalance",
   code: "PL0910 IMBALANCE",

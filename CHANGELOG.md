@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.19.0
+
+Four gaps in the lifecycle, found by mapping it end to end rather than by hitting them.
+
+**The walk-up had no work order, which broke the loop `adopt` exists to start.** After
+`adopt`, every level is populated by placeholders, so `detectFrontier` saw every node as
+covered and emitted no obligations — `frontier` fell back to printing a list of fifteen ids
+and six questions, with no template, no siblings to read before writing a duplicate, and no
+terms in scope. That is the one command whose job is "hand me the next thing to write with
+everything I need", degrading at the one moment its reader knows least.
+
+- **A draft node IS a frontier obligation.** A missing node owes existence; a draft owes a
+  statement; both are answered by reading the level, reading the terms, and answering the
+  level's question. So `PL0901` is now one diagnostic per node carrying the same work order,
+  and `orderedObligations` picks them up for free.
+- It also carries the ask formats, statement style, shape rule, and vocabulary rule, because
+  a draft owes exactly what a missing node owes.
+- The summary's per-level draft expansion is **deleted**, not rewritten: with one diagnostic
+  per node the ordinary (severity, level, code) grouping produces the same rows. A special
+  case that stops being needed is a special case that should stop existing.
+
+**`PL0920 STANDING_MISTAKE` makes the record of a wrong claim resurface.** `kind: "mistake"`
+references carry `relatedNodes` and a verified `evidence.commit`, and were read by
+`knowledge for-file` and `affected-by` and by nothing else — so the most expensive knowledge
+in a repository, the kind you only get by being wrong, was the least likely to be seen again.
+Reported only while the node has not changed since the recording commit: a claim someone
+revised has been answered, and repeating it would train a reader to skip the report.
+
+**`product-lint diff [<ref>]` says what a change did to the product.** `git diff` answers a
+different question — a rename plus a rewrite is two file changes and one claim restated, a
+digest churn across forty descendants is forty file changes and no claim at all. Reuses
+`classifyNodeChanges` and `classifyDeletions` rather than reimplementing them, so the diff
+and the commit path can never disagree about what a claim changing means. When either side
+fails to build it says so instead of showing the arithmetic — a rename that forgot to
+re-parent its children reported the entire product as withdrawn.
+
+**Shape findings route somewhere.** Every other row type names its next command; `PL091x`
+and `PL0920` named none, which is the strand-the-reader failure in a smaller costume. The
+footer now offers `llms affected-by` for the finding's subject, since what makes a shape
+finding legible is the lineage under it rather than the finding's own text.
+
+The restructuring these smells recommend and the tool cannot perform stays unbuilt. The three
+candidate shapes for it are a comment above the `imbalance` detector in `src/smells.ts` —
+beside the code that generates the advice — rather than a document. A standalone file has
+nothing keeping it honest: no test fails when it drifts, no diagnostic points at it, and no
+reader passes through it on the way to the thing it describes.
+
 ## 0.18.0
 
 `check` and `ship` print a summary by default. `--full` restores every finding with its

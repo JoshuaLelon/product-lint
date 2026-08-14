@@ -11,6 +11,7 @@ import { synchronizationDiagnostics } from "./sync.js";
 import { detectFrontier } from "./frontier.js";
 import { resolveScope, scopeDiagnostics } from "./scope.js";
 import { detectSmells, smellConfigDiagnostics, type SmellReport } from "./smells.js";
+import { standingMistakeDiagnostics } from "./mistakes.js";
 
 export interface ProductStatus {
   validation: ValidationResult;
@@ -18,6 +19,8 @@ export interface ProductStatus {
   frontier: FrontierResult;
   /** Shape findings. Always a review, never a gate: exit code is unaffected. */
   smells: SmellReport;
+  /** Recorded mistakes whose node has not changed since. Review, never a gate. */
+  mistakes: Diagnostic[];
 }
 
 export async function inspectWorkingTree(
@@ -46,6 +49,7 @@ export async function inspectSnapshot(
       synchronization: [],
       frontier: { complete: false, diagnostics: [] },
       smells: { diagnostics: [], deferred: 0, ignored: [] },
+      mistakes: [],
     };
   }
 
@@ -69,5 +73,8 @@ export async function inspectSnapshot(
     synchronization,
     frontier,
     smells: detectSmells(config, validation.graph, scope),
+    mistakes: (
+      await standingMistakeDiagnostics(config, validation.graph, validation.references, scope)
+    ).diagnostics,
   };
 }

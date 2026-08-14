@@ -334,7 +334,7 @@ export function detectFrontier(
   }
 
   diagnostics.push(...ungovernedDiagnostics(config, graph, snapshot, scope));
-  const drafts = draftDiagnostics(graph, scope);
+  const drafts = draftDiagnostics(graph, scope, terms);
   diagnostics.push(...drafts.diagnostics);
   // A deferred placeholder is still a sentence someone owes. Leaving it out of
   // the tally printed "0 obligations" beside eleven unwritten statements, which
@@ -353,15 +353,25 @@ export function detectFrontier(
 /**
  * PL0901/PL0902: what `adopt` wrote and has not been replaced.
  *
- * A draft is the most visible thing in the report, so it is not a hole — but it
- * is not done either, and `ship` means terminal completeness. Grouped one block
- * for all of them, the way PL0801 folds per term, because a spine is six nodes
- * and one adoption of a mid-sized repository would otherwise print a hundred
- * near-identical rows.
+ * A draft is a frontier obligation, and treating it as anything else broke the
+ * loop `adopt` exists to start. A missing node owes EXISTENCE; a draft node owes
+ * a STATEMENT. Both are answered the same way — read the level, read the terms,
+ * answer the level's question — so both carry the same work order.
+ *
+ * Reported as one grouped row, this was a list of fifteen ids and six questions
+ * with no template, no siblings to read before writing a duplicate, and no terms
+ * in scope. `detectFrontier` also saw every level as covered, because a
+ * placeholder IS a child, so `frontier` had nothing to hand over at the one
+ * moment its reader knows least: a codebase they just adopted.
+ *
+ * So one diagnostic per node, carrying what a missing-child obligation carries.
+ * The summary folds them back by level on its own, since it already groups on
+ * (severity, level, code).
  */
 function draftDiagnostics(
   graph: KnowledgeGraph,
   scope?: ResolvedScope,
+  terms: SourceTermNode[] = [],
 ): { diagnostics: Diagnostic[]; deferred: number } {
   const all = [...graph.nodes.values()]
     .filter((node) => node.draft)
@@ -377,25 +387,28 @@ function draftDiagnostics(
   const written = drafts.filter((node) => node.statement !== placeholderStatement(node.level));
   const owing = drafts.filter((node) => node.statement === placeholderStatement(node.level));
 
-  const diagnostics: Diagnostic[] = [];
-  if (owing.length > 0) {
-    // Grouped by level, shallowest first, because that is the order of leverage:
-    // a context statement decides what every node under it is even for, and
-    // writing an architecture placeholder before it is work you may throw away.
-    // Sorting these by id instead put `architecture` at the top of the report.
-    const byLevel = KNOWLEDGE_LEVELS.map((level) => ({
-      level,
-      question: LEVEL_AUTHORITY[level].question,
-      ids: owing.filter((node) => node.level === level).map((node) => node.id),
-    })).filter((group) => group.ids.length > 0);
-    diagnostics.push({
-      code: "PL0901 DRAFT_NODE",
-      severity: "info",
-      message: `${owing.length} placeholder statement(s) await a real one.`,
-      action: "ask-user",
-      details: { drafts: byLevel },
-    });
-  }
+  const diagnostics: Diagnostic[] = owing.map((node) => ({
+    code: "PL0901 DRAFT_NODE",
+    severity: "info" as const,
+    message: `${node.id} carries the placeholder statement adopt wrote, and owes a real one.`,
+    nodeId: node.id,
+    // The node itself is the frontier here: the work happens at its own level,
+    // not one below, which is what makes it sort with the other obligations.
+    frontier: node.id,
+    requiredLevel: node.level,
+    path: node.sourcePath,
+    action: LEVEL_AUTHORITY[node.level].action,
+    infer: LEVEL_AUTHORITY[node.level].infer,
+    question: LEVEL_AUTHORITY[node.level].question,
+    expectedPath: node.sourcePath,
+    command: "git add docs && product-lint knowledge sync --staged",
+    details: {
+      // No nodeTemplate: the file exists, and what it owes is the statement and
+      // the deletion of its draft flag.
+      level: nodesAtLevel(graph, node.level),
+      ...(terms.length > 0 ? { termsInScope: termsInScope(terms, node.level) } : {}),
+    },
+  }));
   if (written.length > 0) {
     diagnostics.push({
       code: "PL0902 DRAFT_LOOKS_WRITTEN",

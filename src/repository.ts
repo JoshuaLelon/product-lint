@@ -2,7 +2,14 @@ import path from "node:path";
 import { readdir, readFile } from "node:fs/promises";
 import type { RepositorySnapshot, ResolvedConfig, SnapshotKind } from "./types.js";
 import { normalizePath } from "./glob.js";
-import { listHeadFiles, listIndexFiles, readHeadFile, readIndexFile } from "./git.js";
+import {
+  listFilesAtRef,
+  listHeadFiles,
+  listIndexFiles,
+  readFileAtRef,
+  readHeadFile,
+  readIndexFile,
+} from "./git.js";
 
 const SKIP_DIRECTORIES = new Set([".git", "node_modules", "dist", "build", ".product-lint"]);
 
@@ -22,6 +29,25 @@ async function walk(directory: string, root: string): Promise<string[]> {
     else if (entry.isFile()) output.push(normalizePath(path.relative(root, absolute)));
   }
   return output;
+}
+
+/**
+ * The repository as it stood at some other ref, so the graph there can be built
+ * and compared. `head` is this with the ref fixed; the kinds stay a closed set
+ * because every other command means one of exactly three things.
+ */
+export async function createRefSnapshot(
+  config: ResolvedConfig,
+  ref: string,
+): Promise<RepositorySnapshot> {
+  const files = await listFilesAtRef(config.root, ref);
+  const set = new Set(files);
+  return {
+    kind: "head",
+    files,
+    readFile: async (file) => readFileAtRef(config.root, ref, normalizePath(file)),
+    hasFile: (file) => set.has(normalizePath(file)),
+  };
 }
 
 export async function createSnapshot(

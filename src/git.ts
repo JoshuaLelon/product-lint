@@ -74,6 +74,25 @@ export async function listHeadFiles(root: string): Promise<string[]> {
     .sort();
 }
 
+/** The same listing at any ref, for reading the graph as it stood somewhere else. */
+export async function listFilesAtRef(root: string, ref: string): Promise<string[]> {
+  const result = await runGit(root, ["ls-tree", "-r", "-z", "--name-only", ref], {
+    allowFailure: true,
+  });
+  if (result.code !== 0) return [];
+  return result.stdout
+    .toString("utf8")
+    .split("\0")
+    .map((item: string) => normalizePath(item))
+    .filter(Boolean)
+    .sort();
+}
+
+export async function readFileAtRef(root: string, ref: string, file: string): Promise<string> {
+  const result = await runGit(root, ["show", `${ref}:${normalizePath(file)}`]);
+  return result.stdout.toString("utf8");
+}
+
 export async function readIndexFile(root: string, file: string): Promise<string> {
   const result = await runGit(root, ["show", `:${normalizePath(file)}`]);
   return result.stdout.toString("utf8");
@@ -127,6 +146,25 @@ export async function fileExistsAtCommit(
     allowFailure: true,
   });
   return result.code === 0;
+}
+
+/**
+ * Whether a file has changed since a commit. Used to tell a mistake that has
+ * been answered from one that is still standing: the node's own file is the
+ * evidence, because a claim someone revised after learning it was wrong reads
+ * differently from one nobody has touched.
+ */
+export async function fileChangedSince(
+  root: string,
+  commit: string,
+  file: string,
+): Promise<boolean> {
+  const result = await runGit(
+    root,
+    ["diff", "--quiet", commit, "--", normalizePath(file)],
+    { allowFailure: true },
+  );
+  return result.code !== 0;
 }
 
 export async function isWorkingTreeDirty(root: string): Promise<boolean> {

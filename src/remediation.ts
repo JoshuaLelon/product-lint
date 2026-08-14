@@ -196,6 +196,8 @@ const FIXES: Record<string, string> = {
     "This statement is not the one adopt generated, so the node has been written and only the flag is left behind. Delete the draft field.",
   "PL1015 INVALID_DRAFT":
     "draft is true or it is absent. Delete the field to promote the node; never write it false, which would be a second spelling of absent.",
+  "PL0920 STANDING_MISTAKE":
+    "Read the recorded mistake beside the statement it names. If the claim is what was wrong, revise it — that is what the record exists for. If the mistake was about the implementation and the claim still holds, say so: drop this node from the reference's relatedNodes, or narrow the reference statement to the part that was actually wrong.",
   "PL0910 IMBALANCE":
     "Read the dominant node beside the thin ones. If it names several problems, split it and re-parent its children. If the thin siblings are underbuilt, that is the frontier telling you where to work. If they do not belong in the product, remove them. If the shape is simply true, silence it with a reason: smells.ignore.",
   "PL1402 UNKNOWN_SMELL":
@@ -222,6 +224,8 @@ const ASKS: Record<string, string> = {
     "If you cannot tell which reading is true, that is the finding. Show the user the sentence beside the definition and let them say what was meant.",
   "PL0802 SYNONYM_CANDIDATE":
     "This is a judgement, so put the pair and both definitions to the user and record only what they confirm.",
+  "PL0920 STANDING_MISTAKE":
+    "Whether the claim or its implementation was wrong is the user's call. Show them the recorded mistake beside the statement and record only what they confirm.",
   "PL0806 REJECTED_NAME_IN_PROSE":
     "Show the user the sentence beside the rejection's reason and let them say which it is: the term meant, a second thing, or ordinary English.",
   "PL1312 REJECTED_TERM_NAME":
@@ -249,6 +253,9 @@ export const ASK_FORMATS = [
 
 /** Diagnostics that need an answer from the user. */
 const ASK_CODES = new Set([
+  // A draft owes a statement, which is the same thing a missing node owes,
+  // so it gets the same rules for writing one.
+  "PL0901 DRAFT_NODE",
   "PL0011 MISSING_AUDIENCE",
   "PL0001 MISSING_CONTEXT",
   "PL0101 MISSING_PRODUCT",
@@ -376,6 +383,9 @@ export const VOCABULARY_RULE = [
 
 /** Diagnostics that ask a human or an agent to write prose. */
 const STYLE_CODES = new Set([
+  // A draft owes a statement, which is the same thing a missing node owes,
+  // so it gets the same rules for writing one.
+  "PL0901 DRAFT_NODE",
   "PL0011 MISSING_AUDIENCE",
   "PL0001 MISSING_CONTEXT",
   "PL0101 MISSING_PRODUCT",
@@ -402,6 +412,7 @@ const STYLE_CODES = new Set([
  * copies of the same six codes drift.
  */
 const SHAPE_CODES = new Set([
+  "PL0901 DRAFT_NODE",
   "PL0001 MISSING_CONTEXT",
   "PL0101 MISSING_PRODUCT",
   "PL0201 MISSING_BEHAVIOR",
