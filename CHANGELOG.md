@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.18.0
+
+`check` and `ship` print a summary by default. `--full` restores every finding with its
+repair, and `frontier` is unchanged.
+
+The full blocks were never wrong — each carries its repair, its question, and the set it
+refers to. They are the wrong thing to open with. One `PL0201` prints its question, its fix,
+the four asking formats, the statement style, the shape rule, the vocabulary rule, and twenty
+sibling nodes, so the first fifteen lines of `check` on a real repository were one finding's
+remediation prose and nothing else. A reader heads the output anyway.
+
+- **Ordering is severity, then level.** Severity first because an invalid graph is not an
+  incomplete one, and shape findings read off a graph that does not parse are noise — the
+  same rank the exit code already uses. Level second because a problem decides what
+  everything beneath it is even for. A finding about the repository rather than a layer sorts
+  after the layers instead of pretending to be the shallowest.
+- **Rows fold by code and level**, and carry a count and a first subject, so a row is
+  actionable without expanding it. `PL0901` expands per level instead of folding: sixteen
+  drafts are not one job, they are a context job and then a product job.
+- **Everything held back is named** — rows past the limit, findings scope deferred, and every
+  `smells.ignore` that was honoured, with its reason. A list that stops without saying so
+  reads as a whole list.
+- **Smells join what `check` reports** and stay out of what decides its exit code.
+- **`frontier` is never summarized.** Its whole job is to hand over the next node to write
+  with the template, the question, and the siblings to read first; a one-line row would
+  delete exactly what it exists to deliver.
+- Labels are derived from the diagnostic code, so a new code needs no table entry.
+
 ## 0.17.0
 
 The harness for product smells, with one smell in it.

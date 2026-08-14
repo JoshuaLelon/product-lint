@@ -974,6 +974,47 @@ not that. `check` and `commit check` pass.
 a node whose statement is no longer the generated one has been written, and only the flag was
 left behind. Without it, `ship` would stay red forever for finished work.
 
+## The summary
+
+`check` and `ship` print a summary by default. `--full` gives every finding with its repair.
+
+```text
+10 finding(s) — errors first, then shallowest level, the order of leverage
+
+    context   imbalance           1 context.core
+    product   missing-product     1 context.edge-b
+    behavior  missing-behavior    7 product.core-0
+    behavior  ungoverned-tree     1 src/x.ts
+
+  scope: 1 of 3 problems — 4 finding(s) deferred, 1 shared with them
+  because: Shipping the core problem first.
+  ignored: thin on context.edge-a — One law is genuinely enough.
+
+  product-lint check --full     every finding with its repair
+  product-lint check --all      include the deferred problems
+```
+
+The full blocks are right, and they are the wrong thing to open with. One `PL0201` prints
+its question, its fix, the four asking formats, the statement style, the shape rule, the
+vocabulary rule, and twenty sibling nodes — so on a real repository the first fifteen lines
+of `check` were one finding's remediation prose and nothing else. A reader heads the output
+anyway; the first fifteen lines have to be the whole picture.
+
+Ordering is **severity, then level**. Severity first because an invalid graph is not an
+incomplete one, and shape findings read off a graph that does not parse are noise — the same
+rank `applyStatusExitCode` already uses for exit codes. Level second because a problem
+decides what everything beneath it is even for, so the same finding is worth more the
+shallower it sits. A finding about the repository rather than a layer sorts after the layers
+instead of pretending to be the shallowest.
+
+Rows fold by code and level, and `PL0901` expands per level rather than folding — sixteen
+drafts are not one job, they are a context job and then a product job. Everything held back
+is named: the rows beyond the limit, what scope deferred, and every ignore that was honoured.
+
+`frontier` is never summarized. Its whole job is to hand over the next node to write with the
+template, the question, and the siblings to read first, and a one-line row would delete
+exactly what it exists to deliver.
+
 ## Product smells
 
 Every check above is **local**. `PL0201` asks whether this node has a child at Behavior;
@@ -1081,9 +1122,9 @@ Product Lint verifies the cited commit and paths when validating the working tre
 ```text
 product-lint init [--force]
 product-lint validate [--json]
-product-lint check [--all] [--json]
+product-lint check [--all] [--full] [--json]
 product-lint frontier [--all] [--json]
-product-lint ship [--all] [--json]
+product-lint ship [--all] [--full] [--json]
 product-lint adopt <path>... | --all [--json]
 product-lint smells [--all] [--json]
 product-lint vocabulary [--staged] [--json]

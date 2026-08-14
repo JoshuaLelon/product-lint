@@ -2,7 +2,8 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import type { Diagnostic, ResolvedConfig, ScopeSummary } from "./types.js";
+import type { Diagnostic, KnowledgeGraph, ResolvedConfig, ScopeSummary } from "./types.js";
+import { renderSummary } from "./summary.js";
 import { loadConfig } from "./config.js";
 import { formatDiagnostics, hasErrors } from "./diagnostics.js";
 import { annotateDiagnostics } from "./remediation.js";
@@ -26,9 +27,9 @@ function usage(): string {
 Usage:
   product-lint init [--force]
   product-lint validate [--json]
-  product-lint check [--all] [--json]
+  product-lint check [--all] [--full] [--json]
   product-lint frontier [--all] [--json]
-  product-lint ship [--all] [--json]
+  product-lint ship [--all] [--full] [--json]
   product-lint adopt <path>... | --all [--json]
   product-lint smells [--all] [--json]
   product-lint vocabulary [--staged] [--json]
@@ -46,6 +47,7 @@ Common:
   --config <path>  Use an explicit product-lint.config.json.
   --json           Emit machine-readable JSON.
   --all            Ignore scope.roots for this run, and report the whole forest.
+  --full           Print every finding with its repair, instead of the summary.
 
 Exit codes:
   0  valid and complete for the selected command
@@ -63,6 +65,7 @@ function parseCommon(args: string[], allowPositionals = false) {
       staged: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
       all: { type: "boolean", default: false },
+      full: { type: "boolean", default: false },
       help: { type: "boolean", default: false },
     },
     allowPositionals,
@@ -90,6 +93,8 @@ interface StatusReport {
   complete: boolean;
   dirty: boolean;
   scope?: ScopeSummary;
+  graph?: KnowledgeGraph;
+  ignored: { smell: string; nodeId?: string; because: string }[];
   /** Everything the command reports, in the order it reports it. */
   all: Diagnostic[];
   /** The subset that decides exit code 1, as against an incomplete frontier. */
@@ -111,6 +116,9 @@ async function statusReport(
   const structural = status.validation.diagnostics;
   const sync = status.synchronization;
   const frontier = status.frontier.diagnostics;
+  // Shape is a review and never a gate, so it joins what is reported and stays
+  // out of what decides the exit code.
+  const smells = status.smells.diagnostics;
   const dirty = command === "ship" ? await isWorkingTreeDirty(config.root) : false;
   const shipDiagnostics: Diagnostic[] = dirty
     ? [
@@ -125,10 +133,12 @@ async function statusReport(
     complete: status.frontier.complete && !dirty,
     dirty,
     ...(status.frontier.scope ? { scope: status.frontier.scope } : {}),
+    ...(status.validation.graph ? { graph: status.validation.graph } : {}),
+    ignored: status.smells.ignored,
     all:
       command === "frontier"
         ? frontier
-        : [...structural, ...sync, ...frontier, ...shipDiagnostics],
+        : [...structural, ...sync, ...frontier, ...smells, ...shipDiagnostics],
     blocking: [...structural, ...sync, ...shipDiagnostics],
   };
 }
@@ -240,11 +250,23 @@ async function main(): Promise<void> {
           ...(command === "ship" ? { dirty: report.dirty } : {}),
         }),
       );
-    } else {
+    } else if (parsed.values.full || command === "frontier") {
+      // `frontier` is never summarized: its whole job is to hand over the next
+      // node to write, with the template, the question, and the siblings to read
+      // first. A one-line row would delete exactly what it exists to deliver.
       const scope = report.scope ? renderScope(report.scope) : undefined;
       if (scope) console.log(scope.header);
       process.stdout.write(formatDiagnostics(report.all));
       if (scope) console.log(scope.footer);
+    } else {
+      process.stdout.write(
+        renderSummary({
+          diagnostics: report.all,
+          ...(report.graph ? { graph: report.graph } : {}),
+          ...(report.scope ? { scope: report.scope } : {}),
+          ignored: report.ignored,
+        }),
+      );
     }
     applyStatusExitCode(report);
     return;
