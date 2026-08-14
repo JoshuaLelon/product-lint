@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.a-diff-does-not-say-what-changed-about-the-product"
+  ],
+  "id": "product.a-change-names-the-claims-it-made",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system names the claims that a change added, withdrew, or restated.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f25a980f316086bf6f1a86798420a2f9f47f61dff1f8f452a45ade412cb09d04"
+  }
+}

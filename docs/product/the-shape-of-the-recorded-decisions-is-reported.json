@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.a-new-decision-cannot-be-fitted-to-the-old-ones"
+  ],
+  "id": "product.the-shape-of-the-recorded-decisions-is-reported",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system reports where the shape of the recorded decisions is uneven, and says when that shape is correct.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:340aff4b9aa9135667e846db2acf448a80b2c69f28581ff042daf569ef955516"
+  }
+}

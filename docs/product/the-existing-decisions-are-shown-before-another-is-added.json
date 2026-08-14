@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.a-new-decision-cannot-be-fitted-to-the-old-ones",
+    "context.one-word-carries-two-meanings"
+  ],
+  "id": "product.the-existing-decisions-are-shown-before-another-is-added",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system shows the decisions already recorded at a level before an engineer adds another one.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:cd54fedb10cc8bc831c5f8d781a7e2449310395893621741b4afc9639c7fd408"
+  }
+}

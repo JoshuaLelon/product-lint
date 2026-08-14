@@ -14,6 +14,6 @@
   "schemaVersion": 1,
   "statement": "TODO: What concrete implementation mechanism realizes this architecture?",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:baedab4d37de28bce633caf80c8f218fe7de02e34c88f0ba9e4aab38f0e1a0bc"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:7a4fe1a060cda7a92d6256a2a0563defbfab6ebee706373b06892f2a8f5122d1"
   }
 }

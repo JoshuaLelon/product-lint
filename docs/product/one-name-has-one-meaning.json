@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.one-word-carries-two-meanings"
+  ],
+  "id": "product.one-name-has-one-meaning",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system refuses two meanings for one name.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:db2914e42b1d89e361bbca76afa9158870c65e5052230b8a8ebbdbd3c505126a"
+  }
+}

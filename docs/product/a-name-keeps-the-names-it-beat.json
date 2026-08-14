@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.a-rejected-option-is-lost-within-days"
+  ],
+  "id": "product.a-name-keeps-the-names-it-beat",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system keeps the names an engineer weighed and passed on, with the reason for each.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:b962265efbdfd8e7ecd3c372afcd03f5801b8002b073ce40232bab06a48becd3"
+  }
+}

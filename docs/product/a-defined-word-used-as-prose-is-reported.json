@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.one-word-carries-two-meanings"
+  ],
+  "id": "product.a-defined-word-used-as-prose-is-reported",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system reports where a defined word is used as ordinary prose.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:db2914e42b1d89e361bbca76afa9158870c65e5052230b8a8ebbdbd3c505126a"
+  }
+}

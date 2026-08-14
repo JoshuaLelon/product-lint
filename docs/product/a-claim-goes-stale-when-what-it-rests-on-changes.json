@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.code-changes-and-its-claim-does-not"
+  ],
+  "id": "product.a-claim-goes-stale-when-what-it-rests-on-changes",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system marks a claim stale when anything the claim rests on changes.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:82ef57199b35057d7a52bb392b7512abaaf3b44306793245ba92d07f99dc5088"
+  }
+}

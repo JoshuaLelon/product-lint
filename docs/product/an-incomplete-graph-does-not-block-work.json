@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.day-one-costs-more-than-the-practice-returns"
+  ],
+  "id": "product.an-incomplete-graph-does-not-block-work",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system lets an engineer commit while the graph is incomplete, and counts what is owed.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:7f028adf9d1204407c9d0d35b1860f1141b4f73e799c51946d0a239baba54718"
+  }
+}

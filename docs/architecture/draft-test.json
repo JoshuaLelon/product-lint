@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "TODO: What responsibility, boundary, or ownership model is required to support this behavior?",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:731b5898842a74abe302ccc4efa0f3822b134cdf362a1888cc6aba91146ad471"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:3be0abaaf4831dd507da3b0a7e2c0e8a17a945594ea87eee25b9647f8f45dd60"
   }
 }

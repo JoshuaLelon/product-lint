@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "context.a-report-longer-than-the-reader-acts-on-is-skipped"
+  ],
+  "id": "product.a-report-opens-with-what-is-worth-doing-first",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "The system opens every report with the findings worth acting on first, and names what it held back.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f3a775ffd1006b6beb159d9a92e8e6ddb94577ae8e292c6c67892efd6cfb850c"
+  }
+}
