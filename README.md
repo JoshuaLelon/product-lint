@@ -890,6 +890,90 @@ as `wrong` reports `PL1312` before the file changes, and says that `--taken` is 
 that fits. There is no `term add`: the required field and the load diagnostics already name
 every mistake a scaffold would prevent.
 
+## Scope: the problems being built right now
+
+A graph is otherwise all-or-nothing. Every node owes a descendant at the next level and
+every governed file owes a Mechanism owner, so a repository with nine problems owes nine
+subtrees before `check` goes quiet. `scope` says which of them are being built:
+
+```json
+"scope": {
+  "roots": ["context.coherence", "context.decision-locality"],
+  "because": "Shipping the retrieval problems first; the rest are recorded, not being built."
+}
+```
+
+`because` is required — deferring seven problems is a product decision, and `loadConfig`
+refuses a scope without its reason the way it refuses invalid JSON. Absent `scope` means the
+whole forest, which is the default.
+
+**Scope silences obligations, never invariants.** A deferred problem stops demanding the
+levels below it. It does not stop being valid JSON, having a parent, carrying a current
+digest, or resolving the words it marks — a malformed file breaks the whole graph regardless
+of what is being shipped.
+
+In scope means the roots, everything below them, and everything above them. The deferred set
+is the **complement** of that closure, never the closure of the other roots: those differ
+wherever a node has more than one parent, and growing the deferred set downward would defer
+every node the kept problems happen to share. That difference is reported as a count — the
+deferred problems are already partly built, which is worth knowing before deciding they are
+deferred.
+
+`PL1401 UNKNOWN_SCOPE_ROOT` is an error, because a typo in one id would scope the graph to
+nothing reachable and the whole report would go quiet, which reads exactly like a clean
+repository. `--all` widens for one run; it needs no recorded reason because it reveals rather
+than silences.
+
+```
+scope: 2 of 9 problems
+  context.coherence
+  context.decision-locality
+  because: Shipping the retrieval problems first; the rest are recorded, not being built.
+
+...
+
+deferred: 7 problem(s), 41 obligation(s), 6 node(s) already shared with them
+  product-lint check --all
+```
+
+## Adopting a codebase that already exists
+
+`PL2101 UNMAPPED_STAGED_FILE` refuses an edit to a file no Mechanism owns, and the repair is
+a Mechanism, which needs an Architecture parent, which needs a Behavior parent, up to a
+problem that may not exist. On a repository adopting Product Lint with code already in it,
+that is a wall on the first edit.
+
+```bash
+npx product-lint adopt src/billing/retry.ts   # the file you tripped over
+npx product-lint adopt --all                  # every governed file with no owner
+```
+
+`adopt` writes a **draft spine** instead: one placeholder node per level, each constrained by
+the one above, the Mechanism binding the module's files. The logistics are satisfied at once
+— every file has an owner, every node has a parent — so the commit passes, and what is
+missing is exactly one thing per node: a sentence.
+
+Clusters are modules, the first directory beneath a governed root. One spine per file would
+be six placeholders each and a mid-sized repository would gain thousands; one spine for the
+whole tree is a single trunk, and the point of drafting bottom-up is to **see what problems
+the code already implies** — a graph with one problem in it says nothing to revise. The
+audience placeholder is shared across every cluster, because a codebase does not gain an
+audience per directory.
+
+Every node it writes carries `"draft": true`. That is not a hole in the graph: a placeholder
+the tool reads as exactly what it is announces itself, where an unowned file says nothing
+about what it belongs to. It is a counted, listed, gated debt.
+
+`PL0901 DRAFT_NODE` lists them grouped by level, shallowest first, because that is the order
+of leverage — a context statement decides what everything under it is even for. **`ship`
+refuses while any draft remains**, not because a draft is invisible but because of what
+`ship` means: terminal completeness, and file bindings under statements nobody has made are
+not that. `check` and `commit check` pass.
+
+`PL0902 DRAFT_LOOKS_WRITTEN` catches the one hole a flag opens that a marker string does not:
+a node whose statement is no longer the generated one has been written, and only the flag was
+left behind. Without it, `ship` would stay red forever for finished work.
+
 ## Overlapping mechanisms
 
 Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
@@ -939,9 +1023,10 @@ Product Lint verifies the cited commit and paths when validating the working tre
 ```text
 product-lint init [--force]
 product-lint validate [--json]
-product-lint check [--json]
-product-lint frontier [--json]
-product-lint ship [--json]
+product-lint check [--all] [--json]
+product-lint frontier [--all] [--json]
+product-lint ship [--all] [--json]
+product-lint adopt <path>... | --all [--json]
 product-lint vocabulary [--staged] [--json]
 product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
 product-lint knowledge for-file <path> [--json]
@@ -982,3 +1067,12 @@ exists — `PL1308` if the guess is too deep, `PL0805` forever if it is too shal
 unplaced words would also take the twenty slots `frontier` prints, burying the terms
 actually in play under the terms nobody uses. A palette belongs in prose, where browsing it
 is the point; the graph holds words that statements speak.
+
+`adopt` writes nodes, which looks like it crosses the "no semantic model calls" line and does
+not. What it derives from the repository is the *file bindings* — the same category as
+`knowledge sync`, which already writes derived data. Every sentence is left to a person, and
+`draft` is the node saying so out loud.
+
+`scope` looks like a suppression list and is not. It silences obligations rather than
+diagnostics, carries a required reason, states its own count in every report it quiets, and
+`--all` reverses it with one flag that needs no justification.

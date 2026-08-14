@@ -33,12 +33,25 @@ export async function loadConfig(cwd = process.cwd(), explicit?: string): Promis
     KNOWLEDGE_LEVELS.map((level) => [level, path.join(knowledgeRoot, level)]),
   ) as Record<KnowledgeLevel, string>;
 
+  // A scope that silences seven problems without saying why is a suppression
+  // list. Thrown rather than reported, the way invalid JSON is: a config the
+  // tool cannot trust must not produce a quieter report than no config at all.
+  const scopeRoots = input.scope?.roots ?? [];
+  if (scopeRoots.length > 0 && !input.scope?.because?.trim()) {
+    throw new Error(
+      `scope.roots defers work, so it carries its reason: add scope.because to ${configPath}.`,
+    );
+  }
+
   return {
     root,
     configPath,
     knowledgeRoot,
     canonicalRoots,
     referenceRoot: path.join(knowledgeRoot, "reference"),
+    ...(scopeRoots.length > 0
+      ? { scope: { roots: scopeRoots, because: input.scope!.because.trim() } }
+      : {}),
     governedPaths: {
       include: input.governedPaths?.include ?? ["src/**", "test/**", "tests/**", "scripts/**"],
       exclude: input.governedPaths?.exclude ?? [

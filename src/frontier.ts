@@ -8,6 +8,7 @@ import type {
   SourceTermNode,
 } from "./types.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
+import type { ResolvedScope } from "./scope.js";
 import { audienceOverlaps, audienceSets, resolveAudiences } from "./audience.js";
 import { matchesAny } from "./glob.js";
 import { levelIndex } from "./terms.js";
@@ -217,8 +218,26 @@ export function detectFrontier(
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
   terms: SourceTermNode[] = [],
+  scope?: ResolvedScope,
 ): FrontierResult {
   const diagnostics: Diagnostic[] = [];
+  // Held back rather than dropped. A report that stops without saying so reads
+  // as a complete report, which is how a scoped repository would come to look
+  // finished at 20% built.
+  let deferred = 0;
+  const withScope = (result: Omit<FrontierResult, "scope">): FrontierResult =>
+    scope
+      ? {
+          ...result,
+          scope: {
+            roots: scope.roots,
+            because: scope.because,
+            deferredRoots: scope.deferredRoots,
+            deferred,
+            contested: scope.contested.length,
+          },
+        }
+      : result;
   const rootLevel = KNOWLEDGE_LEVELS[0];
   const contextNodes = [...graph.nodes.values()].filter((node) => node.level === rootLevel);
   if (contextNodes.length === 0) {
@@ -248,8 +267,8 @@ export function detectFrontier(
     // later question, and returning without them is how `ship` came to report
     // MISSING_CONTEXT alone on a repository with 341 unowned files. One
     // diagnostic, with the tree, so the size of the job is visible from the start.
-    diagnostics.push(...ungovernedDiagnostics(config, graph, snapshot));
-    return { complete: false, diagnostics };
+    diagnostics.push(...ungovernedDiagnostics(config, graph, snapshot, scope));
+    return withScope({ complete: false, diagnostics });
   }
 
   // An audience value is covered when some Context's SELECTOR reaches it, which
@@ -276,7 +295,12 @@ export function detectFrontier(
           : [...(graph.children.get(node.id) ?? [])].some(
               (childId) => graph.nodes.get(childId)?.level === nextLevel,
             );
-      if (!covered) diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph, terms));
+      if (covered) continue;
+      if (scope && !scope.inScope.has(node.id)) {
+        deferred += 1;
+        continue;
+      }
+      diagnostics.push(missingChildDiagnostic(node.id, nextLevel, graph, terms));
     }
   }
 
@@ -284,6 +308,10 @@ export function detectFrontier(
     if (node.level !== "mechanism") continue;
     const files = filesForMechanism(graph, node.id, snapshot);
     if (!node.implementation || node.implementation.files.length === 0 || files.length === 0) {
+      if (scope && !scope.inScope.has(node.id)) {
+        deferred += 1;
+        continue;
+      }
       diagnostics.push({
         code: "PL0501 MISSING_IMPLEMENTATION",
         severity: "info",
@@ -305,9 +333,89 @@ export function detectFrontier(
     }
   }
 
-  diagnostics.push(...ungovernedDiagnostics(config, graph, snapshot));
+  diagnostics.push(...ungovernedDiagnostics(config, graph, snapshot, scope));
+  const drafts = draftDiagnostics(graph, scope);
+  diagnostics.push(...drafts.diagnostics);
+  // A deferred placeholder is still a sentence someone owes. Leaving it out of
+  // the tally printed "0 obligations" beside eleven unwritten statements, which
+  // is the one thing the footer exists to prevent.
+  deferred += drafts.deferred;
 
-  return { complete: diagnostics.length === 0, diagnostics };
+  // PL0604 is the one report that does not gate completeness. Every other entry
+  // here is an obligation someone can discharge; that one is a fact nothing in
+  // scope can act on, because the files it names belong to problems the config
+  // says are not being built. It stays in the output at full volume so a green
+  // `ship` never reads as "every file is owned".
+  const gating = diagnostics.filter((item) => !item.code.startsWith("PL0604"));
+  return withScope({ complete: gating.length === 0, diagnostics });
+}
+
+/**
+ * PL0901/PL0902: what `adopt` wrote and has not been replaced.
+ *
+ * A draft is the most visible thing in the report, so it is not a hole — but it
+ * is not done either, and `ship` means terminal completeness. Grouped one block
+ * for all of them, the way PL0801 folds per term, because a spine is six nodes
+ * and one adoption of a mid-sized repository would otherwise print a hundred
+ * near-identical rows.
+ */
+function draftDiagnostics(
+  graph: KnowledgeGraph,
+  scope?: ResolvedScope,
+): { diagnostics: Diagnostic[]; deferred: number } {
+  const all = [...graph.nodes.values()]
+    .filter((node) => node.draft)
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const drafts = all.filter((node) => !scope || scope.inScope.has(node.id));
+  const deferred = all.length - drafts.length;
+  if (drafts.length === 0) return { diagnostics: [], deferred };
+
+  // A draft whose statement is no longer the one `adopt` wrote has been
+  // written, and only the flag was left behind. Reported apart, because its
+  // repair is a deletion rather than a sentence — and left unreported it would
+  // hold `ship` red forever for work that is finished.
+  const written = drafts.filter((node) => node.statement !== placeholderStatement(node.level));
+  const owing = drafts.filter((node) => node.statement === placeholderStatement(node.level));
+
+  const diagnostics: Diagnostic[] = [];
+  if (owing.length > 0) {
+    // Grouped by level, shallowest first, because that is the order of leverage:
+    // a context statement decides what every node under it is even for, and
+    // writing an architecture placeholder before it is work you may throw away.
+    // Sorting these by id instead put `architecture` at the top of the report.
+    const byLevel = KNOWLEDGE_LEVELS.map((level) => ({
+      level,
+      question: LEVEL_AUTHORITY[level].question,
+      ids: owing.filter((node) => node.level === level).map((node) => node.id),
+    })).filter((group) => group.ids.length > 0);
+    diagnostics.push({
+      code: "PL0901 DRAFT_NODE",
+      severity: "info",
+      message: `${owing.length} placeholder statement(s) await a real one.`,
+      action: "ask-user",
+      details: { drafts: byLevel },
+    });
+  }
+  if (written.length > 0) {
+    diagnostics.push({
+      code: "PL0902 DRAFT_LOOKS_WRITTEN",
+      severity: "info",
+      message: `${written.length} draft node(s) have a statement nobody generated. Drop the flag.`,
+      action: "edit-node",
+      details: {
+        uses: written.map((node) => ({ id: node.id, statement: node.statement })),
+      },
+    });
+  }
+  return { diagnostics, deferred };
+}
+
+/**
+ * What `adopt` writes into a node it cannot answer for. Deterministic per level
+ * so PL0902 can tell a placeholder from a statement without storing a copy.
+ */
+export function placeholderStatement(level: KnowledgeLevel): string {
+  return `TODO: ${LEVEL_AUTHORITY[level].question}`;
 }
 
 /**
@@ -325,6 +433,7 @@ function ungovernedDiagnostics(
   config: ResolvedConfig,
   graph: KnowledgeGraph,
   snapshot: RepositorySnapshot,
+  scope?: ResolvedScope,
 ): Diagnostic[] {
   const mechanisms = [...graph.nodes.values()].filter((node) => node.level === "mechanism");
   const ungoverned = governedFiles(config, snapshot).filter(
@@ -334,6 +443,26 @@ function ungovernedDiagnostics(
       ),
   );
   if (ungoverned.length === 0) return [];
+
+  // An unowned file has no lineage, so nothing can say which problem it serves.
+  // Under scope that makes ownership undemandable rather than merely deferred:
+  // the repair would be to build a subtree the config just said is not being
+  // built. So it collapses to one line that states the size of the job and the
+  // command that ends it, and it does not gate completeness.
+  if (scope) {
+    return [
+      {
+        code: "PL0604 UNGOVERNED_OUTSIDE_SCOPE",
+        severity: "info",
+        message:
+          `${ungoverned.length} governed file(s) have no Mechanism owner. Scope cannot tell which ` +
+          `problem they serve, because an unowned file has no lineage to read.`,
+        action: "run-command",
+        command: "product-lint adopt --all",
+        details: { files: ungoverned },
+      },
+    ];
+  }
 
   const canOwnMechanism = [...graph.nodes.values()].some((node) => node.level === "architecture");
   if (!canOwnMechanism) {

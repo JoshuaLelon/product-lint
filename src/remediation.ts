@@ -134,7 +134,7 @@ const FIXES: Record<string, string> = {
 
   // Staged commit consistency
   "PL2101 UNMAPPED_STAGED_FILE":
-    "Create a Mechanism node in docs/mechanism/ whose implementation.files matches this path, or add the path to an existing Mechanism node. Then run product-lint knowledge sync --staged.",
+    "Create a Mechanism node in docs/mechanism/ whose implementation.files matches this path, or add the path to an existing Mechanism node. Then run product-lint knowledge sync --staged.\nIf no problem in the graph owns this file yet, run product-lint adopt <path> instead: it writes a draft spine from a placeholder problem down to a Mechanism that owns the file, so this commit passes. Every node it writes owes a real statement and ship stays incomplete until they are written — the block becomes a counted debt rather than a hole.",
   "PL2102 STALE_STAGED_MECHANISM":
     "Run product-lint knowledge sync --staged, then stage the owner node with git add docs/.",
   "PL2103 STALE_DEPENDENT":
@@ -188,6 +188,16 @@ const FIXES: Record<string, string> = {
     "Mark the statements that use this word, or delete the declaration if nothing needs it.",
   "PL0805 TERM_UNUSED_AT_ITS_LEVEL":
     "No statement at the declaring level marks this term. Either mark one that uses it, or move the declaration down to the shallowest level whose statements do.",
+  "PL0604 UNGOVERNED_OUTSIDE_SCOPE":
+    "These files have no Mechanism owner, and no lineage says which problem they serve, so scope cannot defer them and cannot demand them either. Run product-lint adopt --all to give each cluster a draft spine, which makes them committable and turns the gap into a counted debt.",
+  "PL0901 DRAFT_NODE":
+    "Replace the placeholder with a real statement and delete the draft field. Answer the question the node carries — that is what it was created owing. ship stays incomplete until every draft is written.",
+  "PL0902 DRAFT_LOOKS_WRITTEN":
+    "This statement is not the one adopt generated, so the node has been written and only the flag is left behind. Delete the draft field.",
+  "PL1015 INVALID_DRAFT":
+    "draft is true or it is absent. Delete the field to promote the node; never write it false, which would be a second spelling of absent.",
+  "PL1401 UNKNOWN_SCOPE_ROOT":
+    "scope.roots names a node that does not exist, which scopes the graph to nothing reachable and quiets the whole report. Correct the id, or remove the entry.",
   "PL0806 REJECTED_NAME_IN_PROSE":
     "If the sentence means the term, use the term's name and mark it. If it means a second thing, that thing needs a name of its own — a rejection standing in the way says you decided so once already. If the word is ordinary English here, leave it: this report is a review, not a gate.",
   "PL1312 REJECTED_TERM_NAME":

@@ -2,7 +2,7 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import type { Diagnostic, ResolvedConfig } from "./types.js";
+import type { Diagnostic, ResolvedConfig, ScopeSummary } from "./types.js";
 import { loadConfig } from "./config.js";
 import { formatDiagnostics, hasErrors } from "./diagnostics.js";
 import { annotateDiagnostics } from "./remediation.js";
@@ -17,6 +17,7 @@ import { initProject } from "./init.js";
 import { isWorkingTreeDirty, stagedChanges } from "./git.js";
 import { affectedByTerm, vocabularyReport } from "./vocabulary.js";
 import { loadTermNodes, recordRejection, serializeTermNode } from "./terms.js";
+import { adopt } from "./adopt.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
 
 function usage(): string {
@@ -25,9 +26,10 @@ function usage(): string {
 Usage:
   product-lint init [--force]
   product-lint validate [--json]
-  product-lint check [--json]
-  product-lint frontier [--json]
-  product-lint ship [--json]
+  product-lint check [--all] [--json]
+  product-lint frontier [--all] [--json]
+  product-lint ship [--all] [--json]
+  product-lint adopt <path>... | --all [--json]
   product-lint vocabulary [--staged] [--json]
   product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
   product-lint knowledge for-file <path> [--json]
@@ -42,6 +44,7 @@ Usage:
 Common:
   --config <path>  Use an explicit product-lint.config.json.
   --json           Emit machine-readable JSON.
+  --all            Ignore scope.roots for this run, and report the whole forest.
 
 Exit codes:
   0  valid and complete for the selected command
@@ -58,6 +61,7 @@ function parseCommon(args: string[], allowPositionals = false) {
       json: { type: "boolean", default: false },
       staged: { type: "boolean", default: false },
       force: { type: "boolean", default: false },
+      all: { type: "boolean", default: false },
       help: { type: "boolean", default: false },
     },
     allowPositionals,
@@ -84,6 +88,7 @@ type StatusCommand = "check" | "frontier" | "ship";
 interface StatusReport {
   complete: boolean;
   dirty: boolean;
+  scope?: ScopeSummary;
   /** Everything the command reports, in the order it reports it. */
   all: Diagnostic[];
   /** The subset that decides exit code 1, as against an incomplete frontier. */
@@ -99,8 +104,9 @@ interface StatusReport {
 async function statusReport(
   config: ResolvedConfig,
   command: StatusCommand,
+  ignoreScope = false,
 ): Promise<StatusReport> {
-  const status = await inspectWorkingTree(config);
+  const status = await inspectWorkingTree(config, ignoreScope);
   const structural = status.validation.diagnostics;
   const sync = status.synchronization;
   const frontier = status.frontier.diagnostics;
@@ -117,12 +123,39 @@ async function statusReport(
   return {
     complete: status.frontier.complete && !dirty,
     dirty,
+    ...(status.frontier.scope ? { scope: status.frontier.scope } : {}),
     all:
       command === "frontier"
         ? frontier
         : [...structural, ...sync, ...frontier, ...shipDiagnostics],
     blocking: [...structural, ...sync, ...shipDiagnostics],
   };
+}
+
+/**
+ * What scope held back, printed either side of the diagnostics.
+ *
+ * A scoped report is a quieter report, and quiet is exactly what a finished
+ * repository looks like. Naming the roots above and the deferred count below is
+ * what keeps a green `ship` from reading as "the product is done" when it means
+ * "the two problems you chose are done".
+ */
+function renderScope(scope: ScopeSummary): { header: string; footer: string } {
+  const total = scope.roots.length + scope.deferredRoots.length;
+  const header = [
+    `scope: ${scope.roots.length} of ${total} problems`,
+    ...scope.roots.map((id) => `  ${id}`),
+    `  because: ${scope.because}`,
+    "",
+  ].join("\n");
+  const shared =
+    scope.contested > 0 ? `, ${scope.contested} node(s) already shared with them` : "";
+  const footer = [
+    "",
+    `deferred: ${scope.deferredRoots.length} problem(s), ${scope.deferred} obligation(s)${shared}`,
+    "  product-lint check --all",
+  ].join("\n");
+  return { header, footer };
 }
 
 /**
@@ -196,19 +229,64 @@ async function main(): Promise<void> {
       return;
     }
 
-    const report = await statusReport(config, command as StatusCommand);
+    const report = await statusReport(config, command as StatusCommand, parsed.values.all);
     if (parsed.values.json) {
       console.log(
         stringifyJson({
           complete: report.complete,
+          ...(report.scope ? { scope: report.scope } : {}),
           diagnostics: annotateDiagnostics(report.all),
           ...(command === "ship" ? { dirty: report.dirty } : {}),
         }),
       );
     } else {
+      const scope = report.scope ? renderScope(report.scope) : undefined;
+      if (scope) console.log(scope.header);
       process.stdout.write(formatDiagnostics(report.all));
+      if (scope) console.log(scope.footer);
     }
     applyStatusExitCode(report);
+    return;
+  }
+
+  if (command === "adopt") {
+    const parsed = parseCommon(rest, true);
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    const snapshot = await createSnapshot(config, "working");
+    const validation = await validateSnapshot(config, snapshot);
+    if (!validation.graph || hasErrors(validation.diagnostics)) {
+      process.stdout.write(formatDiagnostics(validation.diagnostics));
+      process.exitCode = 1;
+      return;
+    }
+    if (parsed.positionals.length === 0 && !parsed.values.all) {
+      throw new Error(
+        "Name the files to adopt, or pass --all for every governed file with no owner.",
+      );
+    }
+    const result = await adopt(config, validation.graph, snapshot, parsed.positionals);
+    if (parsed.values.json) {
+      console.log(stringifyJson(result));
+      return;
+    }
+    if (result.clusters.length === 0) {
+      console.log(
+        result.alreadyOwned.length > 0
+          ? `Nothing to adopt: ${result.alreadyOwned.length} file(s) already have a Mechanism owner.`
+          : "Nothing to adopt: no governed file is missing an owner.",
+      );
+      return;
+    }
+    for (const cluster of result.clusters) {
+      console.log(`${cluster.directory}/** — ${cluster.files.length} file(s)`);
+      for (const id of cluster.nodes) console.log(`  ${id}`);
+    }
+    // Every one of them owes a sentence, and saying so here is the difference
+    // between a scaffold and a claim that the graph now describes the product.
+    console.log(
+      `\n${result.written.length} draft node(s) written. Each owes a real statement:` +
+        `\n  product-lint check\n\nRun: git add docs && product-lint knowledge sync --staged`,
+    );
     return;
   }
 

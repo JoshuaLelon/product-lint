@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.16.0
+
+Survive day one in a repository that already has code in it. Two things made that
+impractical, and neither was about the graph being wrong.
+
+**You could not defer a problem.** Every node owed a descendant at the next level and every
+governed file owed a Mechanism owner, so a repository with nine problems owed nine subtrees
+before `check` went quiet.
+
+**You could not commit while adopting.** `PL2101 UNMAPPED_STAGED_FILE` refuses an edit to a
+file no Mechanism owns; the repair is a Mechanism, which needs an Architecture parent, up to
+a problem that may not exist. On a 341-file repository that is a wall on the first edit.
+
+- **`scope.roots`**, with a required `because`. `loadConfig` refuses a scope without its
+  reason the way it refuses invalid JSON — deferring seven problems is a product decision,
+  not a setting. Absent means the whole forest, which stays the default.
+- **Scope silences obligations, never invariants.** A deferred problem stops demanding the
+  levels below it and does not stop being valid, parented, synchronized, or resolvable.
+- **The deferred set is the complement of the kept closure**, never the closure of the other
+  roots. Those differ wherever a node has more than one parent, which is most real graphs,
+  and growing the deferred set downward would defer every node the kept problems share. The
+  same trap `sliceForAudience` already documents. That difference is reported as a count.
+- **`PL1401 UNKNOWN_SCOPE_ROOT`**, error. A typo in one id would scope the graph to nothing
+  reachable and quiet the entire report, which reads exactly like a clean repository.
+- **`--all`** widens `check`, `frontier`, and `ship` for one run. It needs no recorded reason
+  because it reveals rather than silences.
+- **`product-lint adopt <path>... | --all`** writes a draft spine — one placeholder node per
+  level, the Mechanism binding the module's files. The logistics pass at once, and what is
+  missing is exactly one thing per node: a sentence. That converts a blocked commit into a
+  counted debt. `PL2101`'s repair now names it.
+- **Clusters are modules**, the first directory beneath a governed root, with one shared
+  audience placeholder. One spine per file is thousands of placeholders; one for the whole
+  tree is a single trunk, and the point of drafting bottom-up is to see what problems the
+  code already implies — a graph with one problem says nothing to revise. A module holding a
+  file a real Mechanism owns is split finer so a generated glob never trips `PL0603`.
+- **`"draft": true`** on a canonical node, and `PL0901 DRAFT_NODE` grouped by level,
+  shallowest first, because that is the order of leverage. In `nodeFingerprint` and not
+  `semanticFingerprint`: promoting a node is two edits, and the statement is the one that
+  changed the meaning.
+- **`ship` refuses while any draft remains.** Not because a draft is invisible — it is the
+  most visible thing in the report — but because of what `ship` means. `check` and
+  `commit check` pass, because the logistics genuinely are satisfied.
+- **`PL0902 DRAFT_LOOKS_WRITTEN`** names a node whose statement is no longer the generated
+  one, where only the flag was left behind. This is the hole a flag opens that a marker
+  string in the statement does not, and without it `ship` would stay red for finished work.
+- **`PL0604 UNGOVERNED_OUTSIDE_SCOPE`** replaces per-file `PL0601` under scope, and is the
+  one report that does not gate completeness: an unowned file has no lineage, so nothing can
+  say which problem it serves, and demanding ownership would mean building a deferred
+  subtree. It stays at full volume so a green `ship` never reads as "every file is owned".
+- **`PL1015 INVALID_DRAFT`**: `draft` is `true` or absent. `false` would be a second spelling
+  of absent.
+
+`schemaVersion` stays `1`: one optional field is added to canonical nodes.
+
 ## 0.15.0
 
 A term records where its word came from and what it beat. Most product nouns are not

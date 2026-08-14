@@ -24,6 +24,7 @@ const CANONICAL_KEYS = new Set([
   "level",
   "statement",
   "constrainedBy",
+  "draft",
   "sync",
   "implementation",
 ]);
@@ -141,6 +142,18 @@ function parseCanonicalNode(
     });
   }
 
+  // Only `true` is a value. `false` would be a second way to spell "absent",
+  // and two spellings of one state is the thing the graph exists to refuse.
+  if (value.draft !== undefined && value.draft !== true) {
+    diagnostics.push({
+      code: "PL1015 INVALID_DRAFT",
+      severity: "error",
+      message: 'draft is true or absent. Delete the field to promote the node, never set it false.',
+      path: sourcePath,
+      nodeId: id || undefined,
+    });
+  }
+
   let sync: CanonicalNode["sync"];
   if (value.sync !== undefined) {
     if (
@@ -208,6 +221,7 @@ function parseCanonicalNode(
       level: level as KnowledgeLevel,
       statement,
       constrainedBy,
+      ...(value.draft === true ? { draft: true as const } : {}),
       ...(sync ? { sync } : {}),
       ...(implementation ? { implementation } : {}),
       sourcePath,
@@ -402,10 +416,17 @@ export function semanticFingerprint(node: CanonicalNode): string {
   return digest(semanticProjection(node), "product-lint-semantic-v1");
 }
 
+/**
+ * `draft` is deliberately outside `semanticProjection` and inside this one.
+ * Promoting a node is two edits — writing the statement and dropping the flag —
+ * and the statement is what changed the meaning. Counting the flag as semantic
+ * would restate every descendant a second time for the same promotion.
+ */
 export function nodeFingerprint(node: CanonicalNode): string {
   return digest(
     {
       ...semanticProjection(node),
+      draft: node.draft ?? null,
       sync: node.sync ?? null,
       ...(node.implementation
         ? { implementation: { ...node.implementation, files: [...node.implementation.files] } }
@@ -423,6 +444,7 @@ export function serializeNode(node: SourceCanonicalNode): string {
     level: node.level,
     statement: node.statement,
     constrainedBy: [...node.constrainedBy],
+    ...(node.draft ? { draft: true as const } : {}),
     ...(node.sync ? { sync: node.sync } : {}),
     ...(node.implementation ? { implementation: node.implementation } : {}),
   };

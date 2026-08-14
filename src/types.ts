@@ -33,6 +33,18 @@ export interface CanonicalNode {
   level: KnowledgeLevel;
   statement: string;
   constrainedBy: string[];
+  /**
+   * Present means the statement is a placeholder that owes a real one, written
+   * by `adopt` to give a file an owner without inventing a claim. Deleting the
+   * field is the promotion.
+   *
+   * A placeholder the tool can read as exactly what it is announces itself, and
+   * beats an unowned file, which says nothing about what it belongs to. So this
+   * is not a hole in the graph — it is a counted, listed, gated debt. What it
+   * does not do is pass `ship`, which means terminal completeness: file
+   * bindings under statements nobody has made are not done.
+   */
+  draft?: true;
   sync?: NodeSyncState;
   implementation?: MechanismImplementation;
 }
@@ -161,12 +173,25 @@ export interface CommitConventionConfig {
   subjectPattern?: string;
 }
 
+/**
+ * The problems being built right now. Absent means all of them, which is the
+ * default and today's behaviour.
+ *
+ * Deferring a problem is a product decision, so it carries its reason the way a
+ * rejected name does. `because` is required whenever `roots` is non-empty.
+ */
+export interface ScopeConfig {
+  roots: string[];
+  because: string;
+}
+
 export interface ProductLintConfig {
   $schema?: string;
   schemaVersion?: 1;
   root?: string;
   knowledgeRoot?: string;
   governedPaths?: GovernedPathConfig;
+  scope?: ScopeConfig;
   commit?: CommitConventionConfig;
 }
 
@@ -180,6 +205,7 @@ export interface ResolvedConfig {
     include: string[];
     exclude: string[];
   };
+  scope?: ScopeConfig;
   commit: {
     trailer: string;
     removedTrailer: string;
@@ -258,9 +284,21 @@ export interface ValidationResult {
   diagnostics: Diagnostic[];
 }
 
+/** What scope kept out of the report, so the quiet is stated rather than assumed. */
+export interface ScopeSummary {
+  roots: string[];
+  because: string;
+  deferredRoots: string[];
+  /** Obligations held back because their node is not in scope. */
+  deferred: number;
+  /** In-scope nodes that also serve a deferred root: those problems are partly built. */
+  contested: number;
+}
+
 export interface FrontierResult {
   complete: boolean;
   diagnostics: Diagnostic[];
+  scope?: ScopeSummary;
 }
 
 export interface FileKnowledgeResult {

@@ -16,6 +16,7 @@
       "enum": ["audience", "context", "product", "behavior", "architecture", "mechanism"]
     },
     "statement": { "type": "string", "minLength": 1 },
+    "draft": { "const": true },
     "constrainedBy": {
       "type": "array",
       "items": { "type": "string" },
