@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "audience.role.*"
+  ],
+  "id": "context.day-one-costs-more-than-the-practice-returns",
+  "level": "context",
+  "schemaVersion": 1,
+  "statement": "An engineer abandons a practice whose first day costs more than the practice returns.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:d1f2cf43f965ad01c6d7c3b798d9ee4e474c4879c578688afa3f40c7c7a28d4a"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "constrainedBy": [
+    "architecture.draft-test"
+  ],
+  "draft": true,
+  "id": "mechanism.draft-test",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:73b8adf2747028fc9fcd38050da3390d1db7a10cceadda75ea7fa9c0548f86dc",
+    "files": [
+      "test/**"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "TODO: What concrete implementation mechanism realizes this architecture?",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:baedab4d37de28bce633caf80c8f218fe7de02e34c88f0ba9e4aab38f0e1a0bc"
+  }
+}

@@ -35,6 +35,39 @@ export interface AdoptResult {
   written: string[];
   /** Files already owned, so nothing was written for them. */
   alreadyOwned: string[];
+  /**
+   * Governed roots whose whole tree collapsed to one cluster, because every
+   * file sits directly in the root. Named rather than silently accepted.
+   */
+  flatRoots: { root: string; files: number }[];
+}
+
+/**
+ * A root with no directories under it produces one spine for the whole tree,
+ * which is the degenerate case this clustering exists to avoid: a graph with
+ * one problem in it says nothing to revise. The clustering is still right —
+ * inventing boundaries a flat tree does not declare would be adopt guessing at
+ * product structure, and per-file spines cost six nodes each — so the repair is
+ * to SAY so. A reader who is told the draft is coarse splits it top-down, which
+ * is the workflow anyway; a reader who is not told reads two problems as the
+ * answer.
+ */
+function flatRootsAmong(
+  clusters: { directory: string; files: string[] }[],
+  roots: string[],
+): { root: string; files: number }[] {
+  return roots
+    .filter((root) => {
+      const forRoot = clusters.filter(
+        (cluster) => cluster.directory === root || cluster.directory.startsWith(`${root}/`),
+      );
+      return forRoot.length === 1 && forRoot[0]!.directory === root;
+    })
+    .map((root) => ({
+      root,
+      files: clusters.find((cluster) => cluster.directory === root)!.files.length,
+    }))
+    .sort((left, right) => left.root.localeCompare(right.root));
 }
 
 function ownedBy(graph: KnowledgeGraph, file: string): boolean {
@@ -166,7 +199,7 @@ export async function adopt(
   const unowned = selected.filter((file) => !ownedBy(graph, file)).sort();
   const owned = governed.filter((file) => ownedBy(graph, file));
 
-  const result: AdoptResult = { clusters: [], written: [], alreadyOwned };
+  const result: AdoptResult = { clusters: [], written: [], alreadyOwned, flatRoots: [] };
   if (unowned.length === 0) return result;
 
   const knowledgeRelative = normalizePath(path.relative(config.root, config.knowledgeRoot));
@@ -204,5 +237,6 @@ export async function adopt(
       nodes: fresh.map((node) => node.id),
     });
   }
+  result.flatRoots = flatRootsAmong(result.clusters, roots);
   return result;
 }

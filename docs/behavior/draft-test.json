@@ -1,0 +1,13 @@
+{
+  "constrainedBy": [
+    "product.draft-test"
+  ],
+  "draft": true,
+  "id": "behavior.draft-test",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "TODO: What must a user, client, or system observe or do, and on what occasion, because this product rule holds?",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:999791fb64021fff1d544ccf08f2a6b725961ca780c8cc061a60b748c4845aa8"
+  }
+}

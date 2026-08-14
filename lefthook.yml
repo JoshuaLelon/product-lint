@@ -1,0 +1,12 @@
+pre-commit:
+  piped: true
+  commands:
+    1_product-lint-sync:
+      run: npx product-lint knowledge sync --staged && git add docs/
+    2_product-lint-check:
+      run: npx product-lint commit check --staged
+
+commit-msg:
+  commands:
+    product-lint:
+      run: npx product-lint commit message {1}

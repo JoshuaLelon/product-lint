@@ -67,7 +67,7 @@ export {
 export { inspectSnapshot, inspectWorkingTree } from "./status.js";
 export { renderFileKnowledgeForLlm, renderAffectedKnowledgeForLlm } from "./llms.js";
 export { createRefSnapshot, createSnapshot } from "./repository.js";
-export { initProject } from "./init.js";
+export { initProject, schemaReference } from "./init.js";
 export { formatDiagnostic, formatDiagnostics, hasErrors } from "./diagnostics.js";
 export {
   annotateDiagnostic,

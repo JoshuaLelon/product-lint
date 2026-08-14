@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.20.0
+
+Found by dogfooding: Product Lint adopted into Product Lint.
+
+**A draft declares nothing.** Writing, moving, and deleting a `draft: true` node take no
+`Knowledge-Change` trailer, and deleting one takes no `Knowledge-Removed`.
+
+A draft's statement is the sentence `adopt` generated; it says TODO. Demanding a declaration
+for creating one asks an author to declare a decision they have explicitly not made, and
+demanding one for deleting it asks them to withdraw a claim nobody made. The adoption commit
+for this repository demanded 19 trailers, 8 of them for placeholders — more declarations for
+scaffolding than for the claims beside them, on the one commit that is supposed to prove
+adoption is cheap. It now demands 10, and every one names a real claim.
+
+Promotion stays semantic, because that is the moment a claim gets made, and so does
+demotion, which withdraws one. That is why the rule reads both sides of a change rather than
+only the staged one: a change is exempt when the node is a draft on every side it exists on.
+
+`draft` was already outside `semanticFingerprint`, so this adds no new judgement about what
+a claim is. It extends the same one to the three cases a fingerprint cannot see, where the
+node exists on only one side. The guard against smuggling a real claim in under the flag is
+the one that already exists: `PL0902 DRAFT_LOOKS_WRITTEN`.
+
+Only the declaration is waived. A draft still lands in the change set, so its file must
+still be staged and `PL2102` still fires. Two things fall out. A draft is no longer offered
+to the rename matcher, so promoting one placeholder into nine problems reads as nine claims
+added rather than one restated plus eight new. And `diff` stops counting scaffolding as
+product change, because it reads the same classification.
+
+- **`adopt` names a governed root with no directories under it.** Such a root collapses to
+  one cluster, which is the degenerate case the clustering exists to avoid — a graph with
+  one problem in it says nothing to revise. The clustering is still right: inventing
+  boundaries a flat tree does not declare would be `adopt` guessing at product structure,
+  and per-file spines cost six nodes each. So it says so instead. A root with real modules
+  beside loose files is not flat, and is not named.
+- **`init` resolves the config's `$schema` instead of assuming an install.** An installed
+  copy under `node_modules/product-lint` wins, then the running package if it sits inside
+  the repository — what a vendored copy, or Product Lint hosting itself, needs — then the
+  installed path for a global or `npx` run, because a relative path climbing out of the
+  repository would be worse than one the next install makes true. A `$schema` pointing at
+  nothing is the same failure as shipping no schema at all: every editor honouring it
+  reports the file as unvalidatable.
+
 ## 0.19.0
 
 Four gaps in the lifecycle, found by mapping it end to end rather than by hitting them.

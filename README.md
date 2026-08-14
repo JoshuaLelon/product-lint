@@ -26,6 +26,14 @@ adds Product Lint's `pre-commit` and `commit-msg` commands to your Lefthook conf
 (creating it, or appending to an existing one), and installs the Git hooks. Running it
 twice is safe.
 
+The config's `$schema` is resolved rather than assumed: an installed copy under
+`node_modules/product-lint` wins, then the running package if it sits inside the repository
+— which is what a vendored copy, or Product Lint hosting itself, needs — and the installed
+path is the fallback for a global or `npx` run, because a relative path climbing out of the
+repository would be worse than one your next install makes true. A `$schema` pointing at
+nothing is the same failure as shipping no schema at all: every editor that honours it
+reports the file as unvalidatable.
+
 It then runs `check` against what it just wrote, and exits with that result. Provisioning
 is not an answer to "is this repository compliant", and on an adoption install the two
 differ sharply: `init` creates empty level folders beside a `docs/` tree that may already
@@ -960,6 +968,17 @@ the code already implies** — a graph with one problem in it says nothing to re
 audience placeholder is shared across every cluster, because a codebase does not gain an
 audience per directory.
 
+A governed root with **no directories under it** collapses to one cluster, and `adopt` says
+so. The clustering is still right — inventing boundaries a flat tree does not declare would
+be `adopt` guessing at product structure — but a coarse spine that does not announce itself
+reads as the answer:
+
+```text
+src/ has no directories under it, so its 32 file(s) are one cluster.
+A flat tree declares no module boundaries, so this spine says little about what
+problems the code implies. Expect to split it when you revise top-down.
+```
+
 Every node it writes carries `"draft": true`. That is not a hole in the graph: a placeholder
 the tool reads as exactly what it is announces itself, where an unowned file says nothing
 about what it belongs to. It is a counted, listed, gated debt.
@@ -973,6 +992,30 @@ not that. `check` and `commit check` pass.
 `PL0902 DRAFT_LOOKS_WRITTEN` catches the one hole a flag opens that a marker string does not:
 a node whose statement is no longer the generated one has been written, and only the flag was
 left behind. Without it, `ship` would stay red forever for finished work.
+
+### A draft declares nothing
+
+Writing, moving, and deleting a draft take **no `Knowledge-Change` trailer**. A draft's
+statement is the sentence `adopt` generated; it says TODO. Demanding a declaration for
+creating one asks an author to declare a decision they have explicitly not made, and
+demanding `Knowledge-Removed` for deleting one asks them to withdraw a claim nobody made.
+Adopting this repository cost 19 trailers, 8 of them for placeholders — more declarations
+for scaffolding than for the claims beside them, on the one commit that is supposed to prove
+adoption is cheap. It now costs 10, and every one names a real claim.
+
+**Promotion is the moment a claim is made**, and it stays semantic. So does demotion, which
+withdraws one — which is why the rule reads both sides of a change rather than only the
+staged one: a change is exempt when the node is a draft on every side it exists on.
+
+`draft` was already outside `semanticFingerprint`, so this adds no new judgement about what
+a claim is. It extends the same one to the three cases a fingerprint cannot see, where the
+node exists on only one side. Nothing is waived but the declaration: a draft still lands in
+the change set, so its file must still be staged and `PL2102` still fires.
+
+Two things fall out. A draft replaced by several real nodes is no longer offered to the
+rename matcher, so promoting one placeholder into nine problems reads as nine claims added
+rather than one restated plus eight new. And `diff` stops counting scaffolding as product
+change, because it reads the same classification.
 
 ## Which surface says what
 

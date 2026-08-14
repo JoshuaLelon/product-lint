@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [],
+  "id": "audience.role.engineer",
+  "level": "audience",
+  "schemaVersion": 1,
+  "statement": "The product serves the engineer who writes the code and decides what the product promises.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  }
+}

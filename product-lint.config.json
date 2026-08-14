@@ -1,0 +1,25 @@
+{
+  "$schema": "./schema/config.schema.json",
+  "schemaVersion": 1,
+  "root": ".",
+  "knowledgeRoot": "docs",
+  "governedPaths": {
+    "include": [
+      "src/**",
+      "test/**"
+    ],
+    "exclude": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      ".git/**",
+      "docs/**"
+    ]
+  },
+  "commit": {
+    "trailer": "Knowledge-Change",
+    "removedTrailer": "Knowledge-Removed",
+    "renamedTrailer": "Knowledge-Renamed",
+    "requireBody": true
+  }
+}

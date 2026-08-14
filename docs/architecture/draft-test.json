@@ -1,0 +1,13 @@
+{
+  "constrainedBy": [
+    "behavior.draft-test"
+  ],
+  "draft": true,
+  "id": "architecture.draft-test",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "TODO: What responsibility, boundary, or ownership model is required to support this behavior?",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:731b5898842a74abe302ccc4efa0f3822b134cdf362a1888cc6aba91146ad471"
+  }
+}

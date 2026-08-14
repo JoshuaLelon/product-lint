@@ -5,6 +5,7 @@ import { mkdtemp, mkdir, writeFile, stat, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { schemaReference } from "../dist/index.js";
 import { canonicalNodes, createRepository, writeNode } from "./_helpers.mjs";
 
 const CLI = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
@@ -146,4 +147,29 @@ test("init on a graph that stops early reports the next level, not the first", a
   assert.doesNotMatch(stdout, /MISSING_AUDIENCE/, "the audience level exists now");
   assert.match(stdout, /MISSING_BEHAVIOR/, "the frontier moved down to the next absent level");
   assert.equal(code, 2, "a graph that stops early is incomplete, not invalid");
+});
+
+test("the config's $schema points at a schema that exists, installed or not", async () => {
+  const root = await bareDirectory();
+  const packageRoot = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
+
+  // A repository that vendors the package, or hosts Product Lint itself, gets a
+  // path relative to its own root. The template's node_modules guess resolves to
+  // nothing there, so every editor honouring $schema reports the config as
+  // unvalidatable — the same failure as shipping no schema at all.
+  const inside = await schemaReference(packageRoot, packageRoot);
+  assert.equal(inside, "./schema");
+
+  // Outside the tree — a global or npx run — the template's assumption is the
+  // honest guess: a relative path climbing out of the repository would be worse
+  // than one the user's next install makes true.
+  assert.equal(await schemaReference(root, packageRoot), "./node_modules/product-lint/schema");
+
+  // And an installed copy wins over the running one, because that is what an
+  // editor resolves once the dependency is in place.
+  await mkdir(path.join(root, "node_modules", "product-lint", "schema"), { recursive: true });
+  assert.equal(await schemaReference(root, packageRoot), "./node_modules/product-lint/schema");
+
+  const { stdout } = await cli(root, ["init"]);
+  assert.ok(stdout.includes("product-lint.config.json"));
 });

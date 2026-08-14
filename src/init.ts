@@ -1,6 +1,6 @@
 import path from "node:path";
 import { execFile } from "node:child_process";
-import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { KNOWLEDGE_LEVELS } from "./types.js";
@@ -185,15 +185,52 @@ async function verifyHookScripts(root: string, result: InitResult): Promise<void
   }
 }
 
+const INSTALLED_SCHEMA = "./node_modules/product-lint/schema";
+
+/**
+ * Where a `$schema` reference should point, from this repository's root.
+ *
+ * The template assumes an installed copy, which is right for `npm i -D
+ * product-lint` and wrong everywhere else. A repository that vendors the
+ * package, or hosts Product Lint itself, gets a path resolving to nothing — so
+ * every editor honouring `$schema` reports the config as unvalidatable, which
+ * is the same failure as shipping no schema at all.
+ *
+ * Installed first, because that is what an editor resolves once the dependency
+ * is in place even when this command is running from somewhere else. Then the
+ * running package if it sits inside the repository. Then the template's
+ * assumption, which is the honest guess for a global or npx run: the package is
+ * outside the tree, and a relative path out of it would be worse than a path
+ * the user's next install makes true.
+ */
+export async function schemaReference(root: string, packageRoot: string): Promise<string> {
+  if (await exists(path.join(root, "node_modules", "product-lint", "schema"))) {
+    return INSTALLED_SCHEMA;
+  }
+  const own = path.join(packageRoot, "schema");
+  const relative = path.relative(root, own);
+  if ((await exists(own)) && relative && !relative.startsWith("..") && !path.isAbsolute(relative)) {
+    return `./${relative.split(path.sep).join("/")}`;
+  }
+  return INSTALLED_SCHEMA;
+}
+
 export async function initProject(root: string, force = false): Promise<InitResult> {
   const result: InitResult = { created: [], skipped: [], notes: [] };
   const configPath = path.join(root, "product-lint.config.json");
   const template = fileURLToPath(new URL("../templates/product-lint.config.json", import.meta.url));
+  const packageRoot = fileURLToPath(new URL("..", import.meta.url));
   if ((await exists(configPath)) && !force) {
     result.skipped.push(configPath);
   } else {
     await mkdir(root, { recursive: true });
-    await copyFile(template, configPath);
+    const schema = await schemaReference(root, packageRoot);
+    const text = await readFile(template, "utf8");
+    await writeFile(
+      configPath,
+      text.replace(`${INSTALLED_SCHEMA}/config.schema.json`, `${schema}/config.schema.json`),
+      "utf8",
+    );
     result.created.push(configPath);
   }
 

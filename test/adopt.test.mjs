@@ -11,6 +11,9 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import {
   adopt,
+  buildKnowledgeGraph,
+  classifyDeletions,
+  classifyNodeChanges,
   clusterDirectories,
   createSnapshot,
   hasErrors,
@@ -152,4 +155,115 @@ test("adopt never overwrites a node someone wrote", async () => {
     "A retry command owns invoice retries.",
     "the one way this command could destroy knowledge rather than owe it",
   );
+});
+
+test("a governed root with no directories under it is named as one coarse cluster", async () => {
+  const { root } = await createRepository();
+  await addSource(root, ["src/a.ts", "src/b.ts", "src/c.ts"]);
+  const result = await runAdopt(root);
+  // The clustering is still right: inventing boundaries a flat tree does not
+  // declare would be adopt guessing at product structure. What was missing is
+  // saying so, because a reader who is not told the spine is coarse reads one
+  // problem as the answer.
+  assert.deepEqual(result.clusters.map((cluster) => cluster.directory), ["src"]);
+  assert.deepEqual(result.flatRoots, [{ root: "src", files: 3 }]);
+});
+
+test("a root with real modules is not called flat, even when files sit beside them", async () => {
+  const { root } = await createRepository();
+  await addSource(root, ["src/loose.ts", "src/billing/retry.ts", "src/retrieval/rank.ts"]);
+  const result = await runAdopt(root);
+  // `src` is a cluster here too — the leftovers — but it is not the only one,
+  // so the tree did declare boundaries and there is nothing to warn about.
+  assert.equal(result.clusters.length, 3);
+  assert.deepEqual(result.flatRoots, []);
+});
+
+// --- Drafts are outside the trailer economy ---
+//
+// A draft's statement is the sentence adopt generated; it says TODO. Demanding a
+// declaration for creating one asks an author to declare a decision they have
+// explicitly not made, and adopting a repository cost a trailer per placeholder
+// — on the first commit, more trailers for scaffolding than for the claims
+// beside it, which is the day-one cost adopt exists to remove.
+
+const ROOT = {
+  id: "audience.role.engineer",
+  level: "audience",
+  statement: "The product serves the engineer who writes the code.",
+  constrainedBy: [],
+};
+
+/** Every context node needs an audience parent, so the root rides along. */
+function graphOf(nodes) {
+  return buildKnowledgeGraph(
+    [ROOT, ...nodes].map((node) => ({
+      schemaVersion: 1,
+      constrainedBy: node.level === "audience" ? [] : [ROOT.id],
+      sync: { constraintsDigest: "pending" },
+      ...node,
+      sourcePath: `docs/${node.level}/${node.id.split(".").slice(1).join("-")}.json`,
+    })),
+  ).graph;
+}
+
+const PLACEHOLDER = placeholderStatement("context");
+
+test("writing, moving, and deleting a draft declares nothing", () => {
+  const draft = { id: "context.draft-src", level: "context", statement: PLACEHOLDER, draft: true };
+  const empty = graphOf([]);
+
+  // Written by adopt.
+  const added = classifyNodeChanges(empty, graphOf([draft]));
+  assert.deepEqual([...added.semantic], []);
+  assert.deepEqual([...added.added], [], "an addition nobody claimed is not a claim added");
+  // Still tracked, so the file must be staged and PL2102 still fires: what is
+  // waived is the declaration, not the bookkeeping.
+  assert.deepEqual([...added.synchronizationOnly], ["context.draft-src"]);
+  assert.equal(added.changedPaths.get("context.draft-src"), "docs/context/draft-src.json");
+
+  // Re-parented while a real audience layer is written above it.
+  const moved = classifyNodeChanges(
+    graphOf([{ ...draft, constrainedBy: [ROOT.id] }]),
+    graphOf([{ ...draft, constrainedBy: [ROOT.id, "audience.role.engineer"] }]),
+  );
+  assert.deepEqual([...moved.semantic], []);
+
+  // Deleted, because the one placeholder became nine real problems.
+  const removed = classifyNodeChanges(graphOf([draft]), empty);
+  assert.deepEqual([...removed.semantic], []);
+  assert.deepEqual([...removed.deleted], [], "withdrawing nothing is not a removal");
+});
+
+test("promotion is the moment a claim is made, and demotion the moment one is withdrawn", () => {
+  const draft = { id: "context.slow", level: "context", statement: PLACEHOLDER, draft: true };
+  const written = {
+    id: "context.slow",
+    level: "context",
+    statement: "An engineer waits on a build they cannot skip.",
+  };
+
+  const promoted = classifyNodeChanges(graphOf([draft]), graphOf([written]));
+  assert.deepEqual([...promoted.semantic], ["context.slow"]);
+
+  // Both sides are read, not just the staged one: turning a written node back
+  // into a placeholder withdraws a claim.
+  const demoted = classifyNodeChanges(graphOf([written]), graphOf([draft]));
+  assert.deepEqual([...demoted.semantic], ["context.slow"]);
+});
+
+test("a draft replaced by real nodes is not mistaken for a rename", () => {
+  const draft = { id: "context.draft-src", level: "context", statement: PLACEHOLDER, draft: true };
+  const real = [
+    { id: "context.a", level: "context", statement: "An engineer cannot find the governing decision." },
+    { id: "context.b", level: "context", statement: "An engineer repeats a claim known to be wrong." },
+  ];
+  const changes = classifyNodeChanges(graphOf([draft]), graphOf(real));
+  // classifyDeletions pairs deletions against additions by similarity. A draft
+  // that never entered `deleted` cannot be paired with either successor, so the
+  // promotion reads as two claims added rather than one restated plus one new.
+  const deletions = classifyDeletions(graphOf([draft]), graphOf(real), [], [], changes);
+  assert.deepEqual(deletions.renames, []);
+  assert.deepEqual(deletions.removals, []);
+  assert.deepEqual([...changes.semantic].sort(), ["context.a", "context.b"]);
 });

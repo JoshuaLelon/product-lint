@@ -1,0 +1,13 @@
+{
+  "constrainedBy": [
+    "context.the-governing-decision-is-not-findable"
+  ],
+  "draft": true,
+  "id": "product.draft-src",
+  "level": "product",
+  "schemaVersion": 1,
+  "statement": "TODO: What must the product make true to address this context?",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:fc053489206696e35ab97bed0232fd72d25319d76c395d377cfdb2c91eebb824"
+  }
+}

@@ -409,6 +409,15 @@ async function main(): Promise<void> {
       console.log(`${cluster.directory}/** — ${cluster.files.length} file(s)`);
       for (const id of cluster.nodes) console.log(`  ${id}`);
     }
+    // A coarse spine is still a correct spine, but a reader who is not told it
+    // is coarse reads two problems as the answer.
+    for (const flat of result.flatRoots) {
+      console.log(
+        `\n${flat.root}/ has no directories under it, so its ${flat.files} file(s) are one cluster.` +
+          `\nA flat tree declares no module boundaries, so this spine says little about what` +
+          `\nproblems the code implies. Expect to split it when you revise top-down.`,
+      );
+    }
     // Every one of them owes a sentence, and saying so here is the difference
     // between a scaffold and a claim that the graph now describes the product.
     console.log(

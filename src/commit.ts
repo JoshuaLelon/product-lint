@@ -53,6 +53,34 @@ function emptyClassification(): NodeChangeClassification {
   };
 }
 
+/**
+ * A change that makes, withdraws, or restates no claim, because the node is a
+ * draft on every side it exists on.
+ *
+ * A draft's statement is the sentence `adopt` generated; it says TODO. Demanding
+ * `Knowledge-Change` for creating one asks an author to declare a decision they
+ * have explicitly not made, and demanding `Knowledge-Removed` for deleting one
+ * asks them to withdraw a claim nobody made. Adopting a repository cost a
+ * trailer per placeholder — on the first commit, more trailers for scaffolding
+ * than for the claims beside it, which is the day-one cost `adopt` exists to
+ * remove.
+ *
+ * PROMOTION is the moment a claim gets made, and it stays semantic: `before` is
+ * a draft and `after` is not. Demotion — turning a written node back into a
+ * placeholder — withdraws a claim and stays semantic for the same reason, which
+ * is why this reads both sides rather than only the staged one.
+ *
+ * `draft` is already outside `semanticFingerprint`, so this adds no new
+ * judgement about what a claim is; it extends the same one to the three cases
+ * fingerprints cannot see, where the node exists on only one side. The guard
+ * against smuggling a real claim in under the flag is the one that already
+ * exists: PL0902 names a draft whose statement is no longer the generated one.
+ */
+function isDraftOnly(before?: SourceCanonicalNode, after?: SourceCanonicalNode): boolean {
+  if (before && after) return Boolean(before.draft) && Boolean(after.draft);
+  return Boolean((before ?? after)?.draft);
+}
+
 export function classifyNodeChanges(
   head?: KnowledgeGraph,
   staged?: KnowledgeGraph,
@@ -62,6 +90,13 @@ export function classifyNodeChanges(
   for (const id of ids) {
     const before = head?.nodes.get(id);
     const after = staged?.nodes.get(id);
+    // Still classified and still path-tracked, so the file must be staged and
+    // PL2102 still fires: what is waived is the declaration, not the bookkeeping.
+    if (isDraftOnly(before, after)) {
+      result.synchronizationOnly.add(id);
+      result.changedPaths.set(id, (after ?? before)!.sourcePath);
+      continue;
+    }
     if (!before && after) {
       result.semantic.add(id);
       result.added.add(id);
