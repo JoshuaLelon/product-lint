@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.17.0
+
+The harness for product smells, with one smell in it.
+
+Every check before this one is local — `PL0201` asks whether this node has a child at
+Behavior, `PL1104` whether this node's parent exists. None of them look at the distribution,
+so a graph can pass `ship` with exit 0 and still be badly shaped.
+
+Built as scaffolding first, deliberately. A smell is a *calibration* rather than a mechanism:
+"one node holds most of a level's children" has no meaning a unit test can settle, and its
+only real test is whether it fires where a person agrees there is a problem. So the shape of
+the thing lands now, on one smell, and the rest arrive as entries rather than as architecture.
+
+- **`product-lint smells [--all] [--json]`**, exit 0 always, on the same standard as
+  `vocabulary`: a review surface, never a gate.
+- **Every finding states what would make the shape correct.** `whenFine` is a required field
+  on a finding, not a convention. These are all "usually fine, sometimes a tell", and a
+  report that only accuses teaches its reader to skip it.
+- **Two rules belong to the harness, not to any smell.** Draft nodes are invisible, because a
+  freshly adopted repository is N identical chains and every distribution metric would fire
+  on scaffolding — the report would be useless exactly when someone first reads it. And
+  out-of-scope nodes are invisible and counted, the same contract as everywhere else. Both
+  are applied once, so no future smell can get either wrong.
+- **`PL0910 IMBALANCE`**: one node holding most of a level, with its share and its thin
+  siblings, guarded by a minimum of three parents and five children so the first repository
+  to adopt this does not open on a false finding.
+- **Thresholds are fixed and versioned, never configurable**, on the same standard as
+  `STOPWORDS`. A threshold a reader can tune is a threshold that gets tuned until the report
+  is empty, which is a suppression list wearing a number.
+- **`smells.ignore`** turns a smell off globally or for one node, and `because` is required —
+  refused at load the way a reasonless `scope` is. There is deliberately no predicate
+  language over graph properties: that is an engine to maintain, and the cases it could not
+  express are the ones where the smell is telling the truth.
+- **`PL1402 UNKNOWN_SMELL`**, error: an ignore naming a smell this version does not detect
+  silences nothing, quietly.
+- Ordering is the harness's job too — shallowest level first, because a problem decides what
+  everything beneath it is even for.
+
 ## 0.16.0
 
 Survive day one in a repository that already has code in it. Two things made that

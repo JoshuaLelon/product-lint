@@ -185,6 +185,27 @@ export interface ScopeConfig {
   because: string;
 }
 
+/**
+ * Turning a smell off, with the reason. Global, or for one node.
+ *
+ * There is deliberately no threshold to tune and no predicate language to write.
+ * A threshold a reader can set is a threshold that gets set until the report is
+ * empty; a query language over graph properties is an engine to maintain, and
+ * the cases it cannot express are exactly the ones where the smell is telling
+ * the truth. What is left is the same shape as a rejected name: a decision, with
+ * its reason, visible in a diff.
+ */
+export interface SmellIgnore {
+  smell: string;
+  /** Absent silences the smell everywhere; present silences it for one node. */
+  node?: string;
+  because: string;
+}
+
+export interface SmellConfig {
+  ignore: SmellIgnore[];
+}
+
 export interface ProductLintConfig {
   $schema?: string;
   schemaVersion?: 1;
@@ -192,6 +213,7 @@ export interface ProductLintConfig {
   knowledgeRoot?: string;
   governedPaths?: GovernedPathConfig;
   scope?: ScopeConfig;
+  smells?: SmellConfig;
   commit?: CommitConventionConfig;
 }
 
@@ -206,6 +228,7 @@ export interface ResolvedConfig {
     exclude: string[];
   };
   scope?: ScopeConfig;
+  smells?: SmellConfig;
   commit: {
     trailer: string;
     removedTrailer: string;

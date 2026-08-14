@@ -95,6 +95,12 @@ export function formatDiagnostic(input: Diagnostic): string {
     if (hiddenTerms > 0) lines.push(`    ... and ${hiddenTerms} more not shown`);
   }
 
+  // Every shape finding is "usually fine, sometimes a tell", so the reading
+  // under which it is correct travels with it. A finding that only accuses
+  // teaches the reader to skip the whole report.
+  const whenFine = diagnostic.details?.whenFine;
+  if (typeof whenFine === "string") lines.push(wrap("when fine", whenFine));
+
   // Placeholders, shallowest level first. The question prints once per level
   // rather than once per node: eighteen drafts across three modules is six
   // distinct questions, and repeating each one three times turned a summary

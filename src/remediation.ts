@@ -196,6 +196,10 @@ const FIXES: Record<string, string> = {
     "This statement is not the one adopt generated, so the node has been written and only the flag is left behind. Delete the draft field.",
   "PL1015 INVALID_DRAFT":
     "draft is true or it is absent. Delete the field to promote the node; never write it false, which would be a second spelling of absent.",
+  "PL0910 IMBALANCE":
+    "Read the dominant node beside the thin ones. If it names several problems, split it and re-parent its children. If the thin siblings are underbuilt, that is the frontier telling you where to work. If they do not belong in the product, remove them. If the shape is simply true, silence it with a reason: smells.ignore.",
+  "PL1402 UNKNOWN_SMELL":
+    "smells.ignore names a smell this version does not detect, so it silences nothing. Correct the name, or remove the entry.",
   "PL1401 UNKNOWN_SCOPE_ROOT":
     "scope.roots names a node that does not exist, which scopes the graph to nothing reachable and quiets the whole report. Correct the id, or remove the entry.",
   "PL0806 REJECTED_NAME_IN_PROSE":

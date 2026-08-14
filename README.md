@@ -974,6 +974,64 @@ not that. `check` and `commit check` pass.
 a node whose statement is no longer the generated one has been written, and only the flag was
 left behind. Without it, `ship` would stay red forever for finished work.
 
+## Product smells
+
+Every check above is **local**. `PL0201` asks whether this node has a child at Behavior;
+`PL1104` asks whether this node's parent exists. None of them look at the distribution, so a
+graph can pass `ship` with exit 0 and still be a mess — and the mess is legible, because the
+ways a DAG forest can be badly shaped have names and several map onto product problems.
+
+```bash
+npx product-lint smells            # exit 0 always, like vocabulary
+npx product-lint smells --all      # ignore scope.roots for this run
+```
+
+```text
+PL0910 IMBALANCE context.core holds 6 of 7 product node(s), and 2 sibling(s) share the rest.
+  when fine: A product can have one core problem and several adjacent ones, and then this is
+             the true shape. The question is whether the dominant node is one thing or several
+             wearing one name — and whether the thin siblings are underbuilt or do not belong.
+```
+
+**Every finding says what would make the shape correct.** These are all "usually fine,
+sometimes a tell", so `whenFine` is a required field on a finding rather than a convention —
+a report that only accuses teaches its reader to skip it.
+
+Two rules belong to the harness rather than to any one smell, because getting either wrong
+once would poison every smell that ever lands:
+
+- **Draft nodes are invisible.** A freshly adopted repository is N identical
+  `1→1→1→1→1→1` chains, which is a degenerate forest. Every distribution metric would fire
+  on scaffolding, and the report would be useless at exactly the moment someone first reads
+  it. `smells` says how many nodes it skipped for this reason.
+- **Out-of-scope nodes are invisible, and counted.** Same contract as everywhere else.
+
+Thresholds are **fixed and versioned**, never configurable, on the same standard as
+`STOPWORDS`: a threshold a reader can tune is a threshold that gets tuned until the report is
+empty, which is a suppression list wearing a number. What you can do is turn a smell off,
+with its reason:
+
+```json
+"smells": {
+  "ignore": [
+    { "smell": "imbalance", "node": "context.core",
+      "because": "One problem is the product; the other two are adjacent surfaces." }
+  ]
+}
+```
+
+`because` is required, `node` is optional and narrows the silence to one node, and the
+report prints every ignore it honoured. `PL1402 UNKNOWN_SMELL` is an error, because an
+ignore naming a smell this version does not detect silences nothing, quietly.
+
+There is deliberately no predicate language over graph properties. That is an engine to
+maintain, and the cases it could not express are exactly the ones where the smell is telling
+the truth.
+
+Adding the next smell is one entry in `SMELLS` and one `detect()` — the harness already owns
+the two rules, the ordering (shallowest level first, because that is the order of leverage),
+the ignore handling, and the rendering.
+
 ## Overlapping mechanisms
 
 Only Mechanism nodes bind to files, so Mechanism is the one level where "these two nodes overlap"
@@ -1027,6 +1085,7 @@ product-lint check [--all] [--json]
 product-lint frontier [--all] [--json]
 product-lint ship [--all] [--json]
 product-lint adopt <path>... | --all [--json]
+product-lint smells [--all] [--json]
 product-lint vocabulary [--staged] [--json]
 product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
 product-lint knowledge for-file <path> [--json]

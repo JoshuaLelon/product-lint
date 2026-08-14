@@ -4,11 +4,14 @@ import { validateSnapshot } from "./validation.js";
 import { synchronizationDiagnostics } from "./sync.js";
 import { detectFrontier } from "./frontier.js";
 import { resolveScope, scopeDiagnostics } from "./scope.js";
+import { detectSmells, smellConfigDiagnostics, type SmellReport } from "./smells.js";
 
 export interface ProductStatus {
   validation: ValidationResult;
   synchronization: Diagnostic[];
   frontier: FrontierResult;
+  /** Shape findings. Always a review, never a gate: exit code is unaffected. */
+  smells: SmellReport;
 }
 
 export async function inspectWorkingTree(
@@ -20,7 +23,12 @@ export async function inspectWorkingTree(
   const validation = await validateSnapshot(config, snapshot);
 
   if (!validation.graph) {
-    return { validation, synchronization: [], frontier: { complete: false, diagnostics: [] } };
+    return {
+      validation,
+      synchronization: [],
+      frontier: { complete: false, diagnostics: [] },
+      smells: { diagnostics: [], deferred: 0, ignored: [] },
+    };
   }
 
   const synchronization = await synchronizationDiagnostics(
@@ -38,9 +46,10 @@ export async function inspectWorkingTree(
   return {
     validation: {
       ...validation,
-      diagnostics: [...validation.diagnostics, ...scopeErrors],
+      diagnostics: [...validation.diagnostics, ...scopeErrors, ...smellConfigDiagnostics(config)],
     },
     synchronization,
     frontier,
+    smells: detectSmells(config, validation.graph, scope),
   };
 }

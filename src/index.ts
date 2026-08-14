@@ -4,6 +4,8 @@ export { buildKnowledgeGraph, loadCanonicalNodes, ancestorsOf, descendantsOf } f
 export { detectFrontier, filesForMechanism, governedFiles, placeholderStatement } from "./frontier.js";
 export { resolveScope, scopeDiagnostics } from "./scope.js";
 export { adopt, clusterDirectories, slugFor } from "./adopt.js";
+export { SMELLS, detectSmells, smellConfigDiagnostics } from "./smells.js";
+export type { SmellDefinition, SmellFinding, SmellReport } from "./smells.js";
 export { knowledgeForFile, affectedByNode, sliceForAudience } from "./queries.js";
 export {
   audienceSets,

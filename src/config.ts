@@ -43,6 +43,17 @@ export async function loadConfig(cwd = process.cwd(), explicit?: string): Promis
     );
   }
 
+  // Same standard as scope: silencing a finding is a decision, and a decision
+  // without its reason is a suppression list.
+  const ignores = input.smells?.ignore ?? [];
+  for (const entry of ignores) {
+    if (!entry?.smell?.trim() || !entry?.because?.trim()) {
+      throw new Error(
+        `Every smells.ignore entry names a smell and says why it is ignored: fix ${configPath}.`,
+      );
+    }
+  }
+
   return {
     root,
     configPath,
@@ -51,6 +62,17 @@ export async function loadConfig(cwd = process.cwd(), explicit?: string): Promis
     referenceRoot: path.join(knowledgeRoot, "reference"),
     ...(scopeRoots.length > 0
       ? { scope: { roots: scopeRoots, because: input.scope!.because.trim() } }
+      : {}),
+    ...(ignores.length > 0
+      ? {
+          smells: {
+            ignore: ignores.map((entry) => ({
+              smell: entry.smell.trim(),
+              ...(entry.node ? { node: entry.node.trim() } : {}),
+              because: entry.because.trim(),
+            })),
+          },
+        }
       : {}),
     governedPaths: {
       include: input.governedPaths?.include ?? ["src/**", "test/**", "tests/**", "scripts/**"],

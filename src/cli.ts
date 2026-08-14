@@ -30,6 +30,7 @@ Usage:
   product-lint frontier [--all] [--json]
   product-lint ship [--all] [--json]
   product-lint adopt <path>... | --all [--json]
+  product-lint smells [--all] [--json]
   product-lint vocabulary [--staged] [--json]
   product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
   product-lint knowledge for-file <path> [--json]
@@ -246,6 +247,47 @@ async function main(): Promise<void> {
       if (scope) console.log(scope.footer);
     }
     applyStatusExitCode(report);
+    return;
+  }
+
+  if (command === "smells") {
+    const parsed = parseCommon(rest);
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    const status = await inspectWorkingTree(config, parsed.values.all);
+    if (hasErrors(status.validation.diagnostics)) {
+      process.stdout.write(formatDiagnostics(status.validation.diagnostics));
+      process.exitCode = 1;
+      return;
+    }
+    const { smells } = status;
+    if (parsed.values.json) {
+      console.log(
+        stringifyJson({
+          diagnostics: annotateDiagnostics(smells.diagnostics),
+          deferred: smells.deferred,
+          ignored: smells.ignored,
+        }),
+      );
+      return;
+    }
+    const drafts = [...status.validation.graph!.nodes.values()].filter((node) => node.draft).length;
+    if (drafts > 0) {
+      // Said out loud, because a quiet smell report over a drafted graph would
+      // otherwise read as "the shape is fine" when it means "there is no shape yet".
+      console.log(
+        `${drafts} draft node(s) are not read for shape: scaffolding is not product structure.\n`,
+      );
+    }
+    process.stdout.write(formatDiagnostics(smells.diagnostics));
+    if (smells.deferred > 0) {
+      console.log(`\n${smells.deferred} finding(s) not shown: their node is outside scope.roots.`);
+    }
+    for (const entry of smells.ignored) {
+      console.log(
+        `\nignored: ${entry.smell}${entry.nodeId ? ` on ${entry.nodeId}` : ""} — ${entry.because}`,
+      );
+    }
+    // A review surface, never a gate, on the same standard as `vocabulary`.
     return;
   }
 
