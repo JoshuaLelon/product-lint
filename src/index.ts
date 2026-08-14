@@ -5,7 +5,7 @@ export { detectFrontier, filesForMechanism, governedFiles, placeholderStatement 
 export { resolveScope, scopeDiagnostics } from "./scope.js";
 export { adopt, clusterDirectories, slugFor } from "./adopt.js";
 export { SMELLS, detectSmells, smellConfigDiagnostics } from "./smells.js";
-export { labelFor, renderSummary, summaryRows } from "./summary.js";
+export { labelFor, renderBrief, renderRefusal, renderSummary, summaryRows } from "./summary.js";
 export type { SummaryInput, SummaryRow } from "./summary.js";
 export type { SmellDefinition, SmellFinding, SmellReport } from "./smells.js";
 export { knowledgeForFile, affectedByNode, sliceForAudience } from "./queries.js";
@@ -54,7 +54,7 @@ export {
   unusedTermDiagnostics,
   vocabularyReport,
 } from "./vocabulary.js";
-export { inspectWorkingTree } from "./status.js";
+export { inspectSnapshot, inspectWorkingTree } from "./status.js";
 export { renderFileKnowledgeForLlm, renderAffectedKnowledgeForLlm } from "./llms.js";
 export { createSnapshot } from "./repository.js";
 export { initProject } from "./init.js";

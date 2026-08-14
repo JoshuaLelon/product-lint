@@ -1,4 +1,10 @@
-import type { Diagnostic, FrontierResult, ResolvedConfig, ValidationResult } from "./types.js";
+import type {
+  Diagnostic,
+  FrontierResult,
+  RepositorySnapshot,
+  ResolvedConfig,
+  ValidationResult,
+} from "./types.js";
 import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
 import { synchronizationDiagnostics } from "./sync.js";
@@ -19,7 +25,19 @@ export async function inspectWorkingTree(
   /** `--all` widens for one invocation. Widening needs no recorded reason. */
   ignoreScope = false,
 ): Promise<ProductStatus> {
-  const snapshot = await createSnapshot(config, "working");
+  return inspectSnapshot(config, await createSnapshot(config, "working"), ignoreScope);
+}
+
+/**
+ * The same read against any snapshot. The commit brief takes the STAGED one,
+ * because it describes the state the commit is about to create rather than
+ * whatever happens to be on disk beside it.
+ */
+export async function inspectSnapshot(
+  config: ResolvedConfig,
+  snapshot: RepositorySnapshot,
+  ignoreScope = false,
+): Promise<ProductStatus> {
   const validation = await validateSnapshot(config, snapshot);
 
   if (!validation.graph) {

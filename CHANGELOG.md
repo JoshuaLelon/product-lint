@@ -28,6 +28,37 @@ remediation prose and nothing else. A reader heads the output anyway.
   delete exactly what it exists to deliver.
 - Labels are derived from the diagnostic code, so a new code needs no table entry.
 
+**The commit seam gets two messages, and they never blend.** A refusal carries nothing but
+the refusal; a list of unrelated opportunities beside it buries the one thing that has to be
+read. A pass carries what to do next — the commit is the one moment the tool is certain to be
+read, and until now a clean one printed nothing at all.
+
+- **Refusals rank by cause, not by level.** Every entry is an error, so severity cannot sort
+  them, and a node's level says nothing about what to fix first. What ranks them is what
+  fixing one makes knowable: a file that does not parse contributes no node, so the graph
+  built without it is missing parents that exist on disk; a graph that does not build has no
+  lineage, so every digest over it is meaningless. Groups below a broken group are unknown
+  rather than also-wrong, and several vanish when the one above is repaired — which the
+  footer says, because otherwise a reader treats the list as a checklist and starts wherever
+  looks cheapest.
+- **Two collapses inside a group, chosen by shape.** Many subjects sharing one repair become
+  one line: twelve stale nodes and one `knowledge sync` is a single instruction printed
+  twelve times. One subject with several faults becomes one line naming all of them, because
+  they are fixed in one edit and splitting them makes one job look like three. Subjects sort
+  by how broken they are.
+- **Context commands follow the group order**, not the input order. Derived from input order
+  they offered lineage for the stale nodes in the last group — the one already collapsed to a
+  single command, and the only one nobody needs to read a file to repair.
+- **The brief is three rows**, because it fires on every commit and a fifteen-line wall is
+  read for a week and skipped forever after. Ordered by leverage rather than by locality:
+  what you just touched is rarely the highest-value thing to fix next, and scoping it to the
+  diff would turn a flywheel into a janitor.
+- **The brief reads the staged tree**, via a new `inspectSnapshot`, because it describes the
+  state the commit is about to create rather than whatever is on disk beside it.
+- What scope deferred and what `smells.ignore` silenced are named in one collapsed line —
+  a quiet report and a configured-quiet report look identical otherwise.
+- `commit check --staged --full` restores the flat blocks.
+
 ## 0.17.0
 
 The harness for product smells, with one smell in it.

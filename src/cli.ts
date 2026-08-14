@@ -3,13 +3,13 @@ import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import type { Diagnostic, KnowledgeGraph, ResolvedConfig, ScopeSummary } from "./types.js";
-import { renderSummary } from "./summary.js";
+import { renderBrief, renderRefusal, renderSummary } from "./summary.js";
 import { loadConfig } from "./config.js";
 import { formatDiagnostics, hasErrors } from "./diagnostics.js";
 import { annotateDiagnostics } from "./remediation.js";
 import { createSnapshot } from "./repository.js";
 import { validateSnapshot } from "./validation.js";
-import { inspectWorkingTree } from "./status.js";
+import { inspectSnapshot, inspectWorkingTree } from "./status.js";
 import { knowledgeForFile, affectedByNode, sliceForAudience } from "./queries.js";
 import { renderAffectedKnowledgeForLlm, renderFileKnowledgeForLlm } from "./llms.js";
 import { synchronizeStaged } from "./sync.js";
@@ -38,7 +38,7 @@ Usage:
   product-lint knowledge affected-by <node-id|term-id> [--json]
   product-lint knowledge slice <set=value,...> [--json]
   product-lint knowledge sync --staged [--json]
-  product-lint commit check --staged [--json]
+  product-lint commit check --staged [--full] [--json]
   product-lint commit message <commit-message-file> [--json]
   product-lint llms for-file <path>
   product-lint llms affected-by <node-id>
@@ -572,10 +572,38 @@ async function main(): Promise<void> {
       }
       const config = await loadConfig(process.cwd(), parsed.values.config);
       const result = await checkStagedCommit(config);
+      const blocked = hasErrors(result.diagnostics);
       if (parsed.values.json) {
         console.log(stringifyJson({ ...result, diagnostics: annotateDiagnostics(result.diagnostics) }));
-      } else process.stdout.write(formatDiagnostics(result.diagnostics));
-      if (hasErrors(result.diagnostics)) process.exitCode = 1;
+      } else if (parsed.values.full) {
+        process.stdout.write(formatDiagnostics(result.diagnostics));
+      } else if (blocked) {
+        // A refusal carries nothing but the refusal. A list of unrelated
+        // opportunities beside it buries the one thing that has to be read.
+        process.stdout.write(renderRefusal(result.diagnostics));
+      } else {
+        // The commit is the one moment the tool is certain to be read, and
+        // spending it on silence is how a repository drifts. Read against the
+        // staged tree, because that is the state being created.
+        const status = await inspectSnapshot(config, await createSnapshot(config, "staged"));
+        // "no diagnostics" over a brief that lists three is a contradiction, so
+        // the empty case says nothing and lets the brief speak.
+        const warnings = result.diagnostics.filter((item) => item.severity === "warning");
+        if (warnings.length > 0) process.stdout.write(formatDiagnostics(warnings));
+        process.stdout.write(
+          renderBrief({
+            diagnostics: [
+              ...result.diagnostics.filter((item) => item.severity === "info"),
+              ...status.frontier.diagnostics,
+              ...status.smells.diagnostics,
+            ],
+            ...(status.validation.graph ? { graph: status.validation.graph } : {}),
+            ...(status.frontier.scope ? { scope: status.frontier.scope } : {}),
+            ignored: status.smells.ignored,
+          }),
+        );
+      }
+      if (blocked) process.exitCode = 1;
       return;
     }
     if (action === "message") {

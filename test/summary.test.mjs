@@ -7,7 +7,14 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildKnowledgeGraph, labelFor, renderSummary, summaryRows } from "../dist/index.js";
+import {
+  buildKnowledgeGraph,
+  labelFor,
+  renderBrief,
+  renderRefusal,
+  renderSummary,
+  summaryRows,
+} from "../dist/index.js";
 
 function sourced(nodes) {
   return nodes.map((node) => ({ ...node, sourcePath: `docs/${node.level}/${node.id}.json` }));
@@ -129,4 +136,139 @@ test("what scope deferred and what config ignored are named, never merely absent
 
 test("a clean repository says so in one line", () => {
   assert.equal(renderSummary({ diagnostics: [], graph }), "no findings.\n");
+});
+
+// --- The commit seam ---
+//
+// Two messages that must not blend. A refusal carries nothing but the refusal;
+// a pass carries what to do next, because the commit is the one moment the tool
+// is certain to be read and spending it on silence is how a repository drifts.
+
+test("a refusal carries the errors and the commands that give context for them", () => {
+  const text = renderRefusal([
+    {
+      code: "PL2102 STALE_STAGED_MECHANISM",
+      severity: "error",
+      message: "src/approve.ts changed, but governing node mechanism.owner is not staged.",
+      nodeId: "mechanism.owner",
+      command: "product-lint knowledge sync --staged",
+    },
+    {
+      code: "PL0602 UNGOVERNED_TREE",
+      severity: "error",
+      message: "3 files have no owner.",
+      requiredLevel: "architecture",
+      details: { files: ["src/a.ts", "src/b.ts"] },
+    },
+    { code: "PL0801 UNMARKED_TERM_USE", severity: "info", message: "noise that must not appear" },
+  ]);
+  assert.match(text, /commit blocked — 2 errors in 2 groups, first cause first/);
+  // Derived from the subjects rather than guessed at: the difference between
+  // "a node is stale" and knowing which file to open.
+  assert.match(text, /product-lint llms affected-by mechanism\.owner/);
+  assert.match(text, /product-lint llms for-file src\/a\.ts/);
+  // A refusal is not a place to list unrelated opportunities.
+  assert.doesNotMatch(text, /noise that must not appear/);
+  assert.doesNotMatch(text, /highest leverage/);
+});
+
+test("refusals rank by cause, because the lower groups may not survive the repair", () => {
+  const text = renderRefusal([
+    { code: "PL2001 STALE_CONSTRAINTS", severity: "error", message: "a", nodeId: "product.a", command: "sync" },
+    { code: "PL1307 MISSING_TERM", severity: "error", message: "b", nodeId: "behavior.x" },
+    { code: "PL1104 MISSING_CONSTRAINT_NODE", severity: "error", message: "c", nodeId: "product.one" },
+    { code: "PL1009 MISSING_STATEMENT", severity: "error", message: "d", nodeId: "product.two" },
+  ]);
+  const order = text
+    .split("\n")
+    .filter((line) => /^ {2}\d\./.test(line))
+    .map((line) => line.replace(/^ {2}\d\.\s+/, "").split("   ")[0]);
+  // A file that does not parse contributes no node, so the graph built without
+  // it is missing parents that exist on disk; a graph that does not build has
+  // no lineage, so every digest over it is meaningless.
+  assert.deepEqual(order, [
+    "the files do not parse",
+    "the graph does not build",
+    "words do not resolve",
+    "derived data is stale",
+  ]);
+  assert.match(text, /Fix group 1 first/);
+});
+
+test("one subject with several faults is one line; many subjects with one repair is one command", () => {
+  const text = renderRefusal([
+    // One file, three problems, fixed in one edit — splitting them across rows
+    // makes one job look like three.
+    { code: "PL1009 MISSING_STATEMENT", severity: "error", message: "a", nodeId: "product.one" },
+    { code: "PL1002 UNKNOWN_NODE_FIELD", severity: "error", message: "b", nodeId: "product.one" },
+    { code: "PL1007 ID_LEVEL_MISMATCH", severity: "error", message: "c", nodeId: "product.one" },
+    // Twelve stale nodes and one command is a single instruction, not twelve.
+    ...Array.from({ length: 12 }, (_, index) => ({
+      code: "PL2001 STALE_CONSTRAINTS",
+      severity: "error",
+      message: `stale ${index}`,
+      nodeId: `product.stale-${index}`,
+      command: "product-lint knowledge sync --staged",
+    })),
+  ]);
+  assert.match(text, /! product\.one {2}missing-statement, unknown-node-field, id-level-mismatch/);
+  assert.match(text, /run: product-lint knowledge sync --staged {3}\(repairs all 12\)/);
+  assert.doesNotMatch(text, /product\.stale-4/, "twelve subjects collapse into the one repair");
+});
+
+test("a tier with many broken subjects shows the worst and counts the rest", () => {
+  const text = renderRefusal(
+    ["a", "a", "b", "b", "c", "d", "e"].map((subject, index) => ({
+      code: index % 2 === 0 ? "PL1009 MISSING_STATEMENT" : "PL1002 UNKNOWN_NODE_FIELD",
+      severity: "error",
+      message: `x${index}`,
+      nodeId: `product.${subject}`,
+    })),
+  );
+  // Sorted by how broken each subject is, so the file worth opening is first.
+  assert.match(text, /! product\.a {2}/);
+  assert.match(text, /\.\.\. and 2 more in 2 subject\(s\)/);
+});
+
+test("the brief is three rows, because it fires on every commit", () => {
+  const many = Array.from({ length: 9 }, (_, index) => ({
+    code: `PL01${String(index).padStart(2, "0")} THING_${index}`,
+    severity: "info",
+    message: "x",
+    nodeId: "context.core",
+  }));
+  const text = renderBrief({ diagnostics: many, graph });
+  // A fifteen-line wall of opportunities is read for a week and skipped forever
+  // after. Three is a nudge; the whole picture is one command away.
+  assert.equal(summaryRows(many, graph).length, 9, "nine findings exist");
+  for (const named of ["thing-0", "thing-1", "thing-2"]) assert.match(text, new RegExp(named));
+  assert.doesNotMatch(text, /thing-3/, "the fourth is counted, not named");
+  assert.match(text, /6 more/);
+  assert.match(text, /product-lint check/);
+});
+
+test("the brief names what is being ignored, collapsed", () => {
+  const text = renderBrief({
+    diagnostics: [{ code: "PL0910 IMBALANCE", severity: "info", message: "x", nodeId: "context.core" }],
+    graph,
+    scope: {
+      roots: ["context.core"],
+      because: "Shipping the core problem first.",
+      deferredRoots: ["context.edge"],
+      deferred: 4,
+      contested: 0,
+    },
+    ignored: [
+      { smell: "thin", nodeId: "context.a", because: "x" },
+      { smell: "twin", because: "y" },
+      { smell: "imbalance", nodeId: "context.b", because: "z" },
+    ],
+  });
+  // A quiet report and a configured-quiet report look identical otherwise.
+  assert.match(text, /4 deferred by scope \(Shipping the core problem first\.\)/);
+  assert.match(text, /3 ignored \(thin on context\.a, twin, \+1\)/);
+});
+
+test("a clean repository with nothing to suggest says nothing at all", () => {
+  assert.equal(renderBrief({ diagnostics: [], graph }), "");
 });

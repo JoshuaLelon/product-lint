@@ -1015,6 +1015,69 @@ is named: the rows beyond the limit, what scope deferred, and every ignore that 
 template, the question, and the siblings to read first, and a one-line row would delete
 exactly what it exists to deliver.
 
+### The commit seam
+
+`commit check --staged` has two messages, and they never blend. A refusal carries nothing
+but the refusal — a list of unrelated opportunities beside it buries the one thing that has
+to be read. A pass carries what to do next, because the commit is the one moment the tool is
+certain to be read, and spending it on silence is how a repository drifts.
+
+**Refusals rank by cause, not by level.** Every entry is an error, so severity cannot sort
+them, and the level a node sits at says nothing about what to fix first. What ranks them is
+what fixing one makes knowable: a file that does not parse contributes no node, so the graph
+built without it is missing parents that exist on disk; a graph that does not build has no
+lineage, so every digest over it is meaningless. Groups below a broken group are not "also
+wrong" — they are unknown, and several routinely vanish when the one above is repaired.
+
+```text
+commit blocked — 8 errors in 5 groups, first cause first
+
+  1. the files do not parse   2 errors
+     ! product.one  missing-statement, unknown-node-field
+
+  2. the graph does not build   1 error
+     ! product.one  missing-constraint-node
+
+  3. words do not resolve   1 error
+     ! behavior.x  missing-term
+
+  4. derived data is stale   3 errors
+     run: product-lint knowledge sync --staged   (repairs all 3)
+
+  5. this commit is inconsistent with itself   1 error
+     ! mechanism.owner  stale-staged-mechanism
+
+  Fix group 1 first: the groups under it are computed from what it breaks, and some will
+  not survive the repair.
+  context:
+    product-lint llms affected-by product.one
+    product-lint llms affected-by behavior.x
+```
+
+Inside a group there are two collapses, and the shape decides which applies. Many subjects
+sharing one repair become **one line** — twelve stale nodes and one `knowledge sync` is a
+single instruction printed twelve times. One subject with several faults becomes **one line
+naming all of them**, because they are fixed in one edit and splitting them across rows makes
+one job look like three. Subjects sort by how broken they are, so the file worth opening is
+first, and the context commands follow the group order rather than the input order.
+
+A passing commit gets the brief — three rows, because it fires on *every* commit and a
+fifteen-line wall is read for a week and skipped forever after:
+
+```text
+next, highest leverage first:
+
+  context   imbalance           1 context.core
+  product   missing-product     1 context.edge-b
+  behavior  missing-behavior    7 product.core-0
+
+  1 more · 4 deferred by scope (Shipping billing first.) · 2 ignored (thin on context.a, +1)
+  product-lint check
+```
+
+It reads the **staged** tree, because that is the state the commit is about to create rather
+than whatever happens to be on disk beside it. `--full` restores the flat blocks.
+
 ## Product smells
 
 Every check above is **local**. `PL0201` asks whether this node has a child at Behavior;
