@@ -57,7 +57,15 @@ function termsSection(nodes: SourceCanonicalNode[], terms: SourceTermNode[]): st
   if (used.size === 0) return [];
   const lines = ["# Terms", ""];
   for (const term of [...used.values()].sort((left, right) => left.id.localeCompare(right.id))) {
-    lines.push(`## ${term.id}`, `level: ${term.level}`, `name: ${term.name}`, `definition: ${term.definition}`, "");
+    lines.push(`## ${term.id}`, `level: ${term.level}`, `name: ${term.name}`, `definition: ${term.definition}`);
+    if (term.borrowed) lines.push(`borrowed: ${term.borrowed}`);
+    // Reasons in full here, unlike the frontier's name list: this is the page
+    // an agent edits from, and the reason is what it needs in order to argue
+    // with a rejection rather than merely avoid the word.
+    for (const rejection of term.rejected) {
+      lines.push(`rejected: ${rejection.name} (${rejection.stance}) — ${rejection.because}`);
+    }
+    lines.push("");
   }
   return lines;
 }

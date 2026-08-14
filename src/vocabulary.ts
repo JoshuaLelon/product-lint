@@ -97,6 +97,62 @@ export function unmarkedUseDiagnostics(
 }
 
 /**
+ * PL0806: a name a term rejected as wrong, written unmarked in prose anyway.
+ * The same scan as PL0801 pointed at the losers instead of the winner, and it
+ * catches the drift the rejection was recorded to prevent — you decide a word
+ * does not name the thing, then reach for it in a statement six months later.
+ *
+ * Only `wrong` rejections are scanned. A `taken` rejection says the word is
+ * already load-bearing here, so its appearances in prose are the correct uses
+ * it names — scanning them would report a term's own corpus back at it. In the
+ * graph this was designed against, the two `taken` names accounted for ten
+ * occurrences, every one legitimate; unfiltered, the first two terms declared
+ * would have taught everyone to skip this report.
+ */
+export function rejectedNameUseDiagnostics(
+  nodes: SourceCanonicalNode[],
+  terms: SourceTermNode[],
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  for (const term of [...terms].sort((left, right) => left.id.localeCompare(right.id))) {
+    for (const rejection of [...term.rejected].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    )) {
+      if (rejection.stance !== "wrong") continue;
+      const nameTokens = tokenize(rejection.name);
+      if (nameTokens.length === 0) continue;
+      const uses: { id: string; statement: string }[] = [];
+      for (const node of nodes) {
+        // The same level floor as PL0801: above the term, the word cannot be
+        // this term's rejected word, because nothing up there could have
+        // marked the term either.
+        if (levelIndex(node.level) < levelIndex(term.level)) continue;
+        const visible = tokenize(withoutQuoted(withoutMarks(node.statement)));
+        if (containsSequence(visible, nameTokens)) {
+          uses.push({ id: node.id, statement: node.statement });
+        }
+      }
+      if (uses.length === 0) continue;
+      diagnostics.push({
+        code: "PL0806 REJECTED_NAME_IN_PROSE",
+        severity: "info",
+        message: `"${rejection.name}" was rejected as a name for *${term.name}* and appears in ${uses.length} statement(s) at ${term.level} or deeper.`,
+        nodeId: term.id,
+        path: term.sourcePath,
+        action: "inspect",
+        details: {
+          term: { id: term.id, level: term.level, name: term.name, definition: term.definition },
+          rejected: rejection.name,
+          because: rejection.because,
+          uses,
+        },
+      });
+    }
+  }
+  return diagnostics;
+}
+
+/**
  * Small and versioned on purpose: this list is part of the deterministic
  * contract, not a linguistics opinion. Changing it changes which pairs report,
  * so it changes only deliberately.
@@ -298,6 +354,7 @@ export function vocabularyReport(
       terms,
       diagnostics: [
         ...unmarkedUseDiagnostics(nodes, terms),
+        ...rejectedNameUseDiagnostics(nodes, terms),
         ...synonymCandidateDiagnostics(terms),
         ...capitalizedUndeclaredDiagnostics(nodes, vocabulary),
         ...unusedTermDiagnostics(nodes, terms),
@@ -315,6 +372,8 @@ export function vocabularyReport(
       // a term outside the diff is read only against the statements in it.
       ...unmarkedUseDiagnostics(nodes, changedTerms),
       ...unmarkedUseDiagnostics(changedNodes, unchangedTerms),
+      ...rejectedNameUseDiagnostics(nodes, changedTerms),
+      ...rejectedNameUseDiagnostics(changedNodes, unchangedTerms),
       ...synonymCandidateDiagnostics(terms).filter((item) => {
         const pair = item.details?.terms as { id: string }[] | undefined;
         return pair?.some((entry) => changedTerms.some((term) => term.id === entry.id)) ?? false;

@@ -1,5 +1,68 @@
 # Changelog
 
+## 0.15.0
+
+A term records where its word came from and what it beat. Most product nouns are not
+coinages — the thing already has a name in information retrieval, in records management, in
+scheduling theory — and a naming decision otherwise leaves no trace: you weigh three words,
+pick one, and the only evidence is that a different word is present. Nobody can then tell
+a name chosen over alternatives from the first word that came to mind.
+
+- **`borrowed`**, one optional string: where the word comes from and how this graph's sense
+  departs from it. Free prose because nothing queries it — it is there to be read in
+  `frontier` and the `llms` views before a statement is written. Deliberately not an object
+  with a `source` slot: a citation field in a set invites completing the set, which is how
+  a fluent wrong citation gets written.
+- **`rejected`**, required, `[]` legal: the names weighed and passed on, each with a
+  `stance` and a reason. Required because absent and empty would otherwise be one byte with
+  two meanings, and "nobody wrote it down" reading as "nothing was considered" is what makes
+  an unrecorded term useless rather than merely incomplete. A reason is required too — a
+  bare list of names is a suppression list, not a decision.
+- **`PL1312 REJECTED_TERM_NAME`** refuses a name another term rejected as `wrong`. Not
+  "this is a duplicate" — nothing can tell a duplicate wearing the rejected name from a real
+  second sense — but "a recorded decision is being contradicted without saying so". Global
+  and case-insensitive on the whole name, matching `PL1304`, because marks resolve globally
+  and a level-scoped rejection would be incoherent with the notation. A second pass over the
+  loaded terms, so the finding never depends on read order. The repair is `PL1304`'s repair,
+  a two-word name; deleting the rejection is for a real reversal, and the deleted line is
+  then the record of it.
+- **`PL0806 REJECTED_NAME_IN_PROSE`** is `PL0801`'s scan pointed at the losers: a `wrong`
+  name written unmarked at the term's level or deeper. Info, in `vocabulary` and in
+  `commit check --staged`.
+- **`stance` splits two different facts.** `wrong` says the word does not name this thing
+  and is guarded by both diagnostics. `taken` says the word already names something else
+  here and is recorded, never enforced. Rejecting a name because it is spoken for is common
+  and correct, and it predicts that the word goes on being used — and eventually declared —
+  for that other thing; guarding it would fire on the case it was written to describe, and
+  the only clean repair would be deleting a true record. Against the graph this was designed
+  for, two `taken` names accounted for ten prose occurrences, every one legitimate.
+- **Neither field joins `semanticTermFingerprint`.** Discovering that your word matches an
+  established one changes no statement's meaning, and neither does writing down a name you
+  passed on; both changes classify as synchronization-only. Editing the `definition` to
+  match a borrowed sense still propagates. Without this line, attaching origins to an
+  existing vocabulary would restate the whole graph for no change in meaning, and would
+  simply not get done.
+- The fourth authoring rule gained both, so an agent writing prose is told to record the
+  losers while it is choosing rather than after.
+- **`product-lint term reject <term-id> <name> --wrong|--taken --because <reason>`.**
+  Required `rejected` reaches exactly one moment, the term's creation, and alternatives are
+  usually weighed later — while writing a statement, about a term declared months ago and
+  not open. Recording one then costs finding the file and matching an array shape, which is
+  more than the decision cost, so it does not happen and the alternative is gone. Exactly
+  one stance is required and never defaulted: which one it is decides whether the name is
+  guarded or merely recorded. The write is refused with the diagnostic it would have caused
+  rather than a command-time family of its own, so rejecting an already-declared name as
+  `wrong` reports `PL1312` before the file changes, and names `--taken` as the fit.
+- **No `term add`.** It was proposed and cut: every failure a scaffold would prevent is
+  already named by `PL1302`, `PL1305`, `PL1306`, and — now that the field is required —
+  `PL1301` for a missing `rejected`. What was left is convenience for an agent that writes
+  JSON well against a linter that reports every mistake immediately.
+- **Fixed**: `PL1301 INVALID_TERM`'s repair listed the fields of a term node and would have
+  gone on omitting `rejected`, telling a reader to write the file that produced the error.
+
+`schemaVersion` stays `1`: one required field is added to term nodes, which existing term
+files satisfy with `"rejected": []`.
+
 ## 0.14.0
 
 Vocabulary may be declared at every level. Terms began at product on one argument —

@@ -4,7 +4,7 @@
   "title": "Product Lint term node",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "level", "name", "definition"],
+  "required": ["id", "level", "name", "definition", "rejected"],
   "properties": {
     "$schema": { "type": "string" },
     "schemaVersion": { "const": 1 },
@@ -17,6 +17,20 @@
     },
     "name": { "type": "string", "minLength": 1 },
     "definition": { "type": "string", "minLength": 1 },
+    "borrowed": { "type": "string", "minLength": 1 },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "stance", "because"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "stance": { "enum": ["wrong", "taken"] },
+          "because": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "sync": {
       "type": "object",
       "additionalProperties": false,

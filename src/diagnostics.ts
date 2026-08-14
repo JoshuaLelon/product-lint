@@ -67,13 +67,29 @@ export function formatDiagnostic(input: Diagnostic): string {
   // and a rule about a set the reader cannot see is advice, not information —
   // the same reason the level prints above.
   const termsInScope = diagnostic.details?.termsInScope as
-    | { total: number; shown: { id: string; level: string; name: string; definition: string }[] }
+    | {
+        total: number;
+        shown: {
+          id: string;
+          level: string;
+          name: string;
+          definition: string;
+          borrowed?: string;
+          rejected?: string[];
+        }[];
+      }
     | undefined;
   if (termsInScope && termsInScope.shown.length > 0) {
     lines.push(`  terms in scope at ${diagnostic.requiredLevel} (${termsInScope.total}):`);
     for (const term of termsInScope.shown) {
       lines.push(`    *${term.name}* — ${term.id} (${term.level})`);
       lines.push(`      ${term.definition}`);
+      if (term.borrowed) lines.push(`      borrowed: ${term.borrowed}`);
+      // The names already weighed against this term, so the reader stops
+      // before coining one of them rather than after.
+      if (term.rejected && term.rejected.length > 0) {
+        lines.push(`      rejected: ${term.rejected.join(", ")}`);
+      }
     }
     const hiddenTerms = termsInScope.total - termsInScope.shown.length;
     if (hiddenTerms > 0) lines.push(`    ... and ${hiddenTerms} more not shown`);

@@ -27,6 +27,8 @@ export {
   buildVocabulary,
   loadTermNodes,
   parseMarks,
+  recordRejection,
+  rejectedNameDiagnostics,
   resolveMark,
   resolveMarks,
   semanticTermFingerprint,
@@ -40,6 +42,7 @@ export {
 export {
   affectedByTerm,
   capitalizedUndeclaredDiagnostics,
+  rejectedNameUseDiagnostics,
   synonymCandidateDiagnostics,
   unmarkedUseDiagnostics,
   unusedTermDiagnostics,

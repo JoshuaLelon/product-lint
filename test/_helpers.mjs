@@ -123,11 +123,18 @@ export async function readNode(root, level, name) {
   return JSON.parse(await readFile(path.join(root, "docs", level, `${name}.json`), "utf8"));
 }
 
+// `rejected` is required on a term, and a fixture that says nothing about
+// naming alternatives means none were weighed — so the empty list is the
+// default here. Tests that exercise the field pass their own.
 export async function writeTerm(root, term) {
   const slug = term.id.slice("term.".length).replaceAll(".", "-");
   const file = path.join(root, "docs", term.level, "terms", `${slug}.json`);
   await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(file, `${JSON.stringify({ schemaVersion: 1, ...term }, null, 2)}\n`, "utf8");
+  await writeFile(
+    file,
+    `${JSON.stringify({ schemaVersion: 1, rejected: [], ...term }, null, 2)}\n`,
+    "utf8",
+  );
   return file;
 }
 

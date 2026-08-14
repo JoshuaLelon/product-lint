@@ -42,6 +42,27 @@ export interface TermSyncState {
 }
 
 /**
+ * A name weighed for this term and not taken, with the reason.
+ *
+ * The stance is the one bit the tool needs, and the two values are different
+ * facts rather than two volumes of the same one. `wrong` says the word does
+ * not name this thing. `taken` says the word already names something else
+ * here — which is a common and correct reason to pass on a name.
+ *
+ * Only `wrong` is guarded. A `taken` rejection predicts that the word goes on
+ * being used, and eventually declared, for that other thing; enforcing it
+ * would fire on exactly the case it was written to describe, and the only
+ * clean repair would be deleting a true record. So `taken` is recorded and
+ * never enforced, and PL1304 still catches any real collision with a name.
+ */
+export interface TermRejection {
+  /** The surface form weighed, compared the way PL1304 compares names. */
+  name: string;
+  stance: "wrong" | "taken";
+  because: string;
+}
+
+/**
  * A term is a name, not a claim: it has no constrainedBy, it neither promises
  * nor obeys, and it creates no frontier obligation. Its only edges are its
  * uses, which are derived from marked statement text and never authored.
@@ -66,6 +87,28 @@ export interface TermNode {
   name: string;
   /** One sentence under STATEMENT_STYLE. May itself mark terms of its level or shallower. */
   definition: string;
+  /**
+   * Where the word comes from, and how this graph's sense departs from it.
+   *
+   * One free string because nothing queries it: it exists to be read in the
+   * frontier and the llms views before a statement is written, so a reader who
+   * knows the field knows what is meant and a reader who does not has
+   * something to go read. Deliberately not an object with a `source` slot —
+   * a citation field in a set invites completing the set, and a fluent wrong
+   * citation is worse than no citation.
+   */
+  borrowed?: string;
+  /**
+   * Names weighed and not taken. Required, and an empty array is the honest
+   * answer when nothing was weighed.
+   *
+   * Required because absent and empty would otherwise be one byte with two
+   * meanings, and "nobody wrote it down" reading as "nothing was considered"
+   * is what makes an unrecorded term useless rather than merely incomplete.
+   * Stored on the node rather than left to a commit body because PL1312 reads
+   * it at load time, and a linter cannot query git history.
+   */
+  rejected: TermRejection[];
   /** Present only when the definition marks at least one term. */
   sync?: TermSyncState;
 }

@@ -139,15 +139,34 @@ function nodesAtLevel(
 function termsInScope(
   terms: SourceTermNode[],
   level: KnowledgeLevel,
-): { total: number; shown: { id: string; level: string; name: string; definition: string }[] } {
+): {
+  total: number;
+  shown: {
+    id: string;
+    level: string;
+    name: string;
+    definition: string;
+    borrowed?: string;
+    rejected: string[];
+  }[];
+} {
   const inScope = terms
     .filter((term) => levelIndex(term.level) <= levelIndex(level))
     .sort((left, right) => left.id.localeCompare(right.id));
   return {
     total: inScope.length,
-    shown: inScope
-      .slice(0, LEVEL_SAMPLE_LIMIT)
-      .map((term) => ({ id: term.id, level: term.level, name: term.name, definition: term.definition })),
+    shown: inScope.slice(0, LEVEL_SAMPLE_LIMIT).map((term) => ({
+      id: term.id,
+      level: term.level,
+      name: term.name,
+      definition: term.definition,
+      ...(term.borrowed ? { borrowed: term.borrowed } : {}),
+      // Names and stances only. This surface is scanned to answer "does a word
+      // for this already exist" — the names alone answer it, and twenty terms
+      // carrying every reason would bury the definitions the block exists for.
+      // The reasons are one file away, and the llms views print them in full.
+      rejected: term.rejected.map((item) => `${item.name} (${item.stance})`),
+    })),
   };
 }
 

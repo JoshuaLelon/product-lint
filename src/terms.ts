@@ -7,6 +7,7 @@ import type {
   SourceCanonicalNode,
   SourceTermNode,
   TermNode,
+  TermRejection,
   Vocabulary,
 } from "./types.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
@@ -28,8 +29,13 @@ const TERM_KEYS = new Set([
   "level",
   "name",
   "definition",
+  "borrowed",
+  "rejected",
   "sync",
 ]);
+
+const REJECTION_KEYS = new Set(["name", "stance", "because"]);
+const STANCES = new Set(["wrong", "taken"]);
 
 /**
  * A use of a defined term is the term's name in single asterisks: *plan*.
@@ -273,6 +279,111 @@ function parseTermNode(
     });
   }
 
+  let borrowed: string | undefined;
+  if (value.borrowed !== undefined) {
+    const text = typeof value.borrowed === "string" ? value.borrowed.trim() : "";
+    if (!text) {
+      diagnostics.push({
+        code: "PL1301 INVALID_TERM",
+        severity: "error",
+        message: "borrowed is a non-empty sentence, or it is absent. Nothing is not an origin.",
+        path: sourcePath,
+        nodeId: id || undefined,
+      });
+    } else {
+      borrowed = text;
+    }
+  }
+
+  // Required with an empty array legal, so [] means "nothing was weighed" and
+  // never "nobody wrote it down". The two states are the whole reason the
+  // field can be trusted, and an optional field cannot tell them apart.
+  const rejected: TermRejection[] = [];
+  if (!Array.isArray(value.rejected)) {
+    diagnostics.push({
+      code: "PL1301 INVALID_TERM",
+      severity: "error",
+      message:
+        value.rejected === undefined
+          ? 'Term node is missing "rejected". Record the names you weighed and passed on, or "rejected": [] to say nothing was weighed.'
+          : "rejected must be an array.",
+      path: sourcePath,
+      nodeId: id || undefined,
+    });
+  } else {
+    const seen = new Set<string>();
+    for (const entry of value.rejected) {
+      if (!isRecord(entry)) {
+        diagnostics.push({
+          code: "PL1301 INVALID_TERM",
+          severity: "error",
+          message: "Each rejection is an object with name, stance, and because.",
+          path: sourcePath,
+          nodeId: id || undefined,
+        });
+        continue;
+      }
+      for (const key of Object.keys(entry)) {
+        if (!REJECTION_KEYS.has(key)) {
+          diagnostics.push({
+            code: "PL1301 INVALID_TERM",
+            severity: "error",
+            message: `Unknown rejection field: ${key}`,
+            path: sourcePath,
+            nodeId: id || undefined,
+          });
+        }
+      }
+      const rejectedName = typeof entry.name === "string" ? entry.name.trim() : "";
+      const stance = typeof entry.stance === "string" ? entry.stance : "";
+      const because = typeof entry.because === "string" ? entry.because.trim() : "";
+      if (!rejectedName || !because) {
+        diagnostics.push({
+          code: "PL1301 INVALID_TERM",
+          severity: "error",
+          message: `A rejection carries a non-empty ${!rejectedName ? "name" : "because"}. A bare list of names is a suppression list, not a decision.`,
+          path: sourcePath,
+          nodeId: id || undefined,
+        });
+        continue;
+      }
+      if (!STANCES.has(stance)) {
+        diagnostics.push({
+          code: "PL1301 INVALID_TERM",
+          severity: "error",
+          message: `Invalid rejection stance for "${rejectedName}": ${String(entry.stance)}. Use wrong when the word does not name this thing, taken when it already names something else here.`,
+          path: sourcePath,
+          nodeId: id || undefined,
+        });
+        continue;
+      }
+      // A term that rejects its own name says nothing, and would report
+      // against itself forever.
+      if (name && rejectedName.toLowerCase() === name.toLowerCase()) {
+        diagnostics.push({
+          code: "PL1301 INVALID_TERM",
+          severity: "error",
+          message: `A term cannot reject its own name: "${rejectedName}".`,
+          path: sourcePath,
+          nodeId: id || undefined,
+        });
+        continue;
+      }
+      if (seen.has(rejectedName.toLowerCase())) {
+        diagnostics.push({
+          code: "PL1301 INVALID_TERM",
+          severity: "error",
+          message: `"${rejectedName}" is rejected twice by the same term. One name, one reason.`,
+          path: sourcePath,
+          nodeId: id || undefined,
+        });
+        continue;
+      }
+      seen.add(rejectedName.toLowerCase());
+      rejected.push({ name: rejectedName, stance: stance as TermRejection["stance"], because });
+    }
+  }
+
   let sync: TermNode["sync"];
   if (value.sync !== undefined) {
     if (!isRecord(value.sync) || typeof value.sync.vocabularyDigest !== "string") {
@@ -298,6 +409,8 @@ function parseTermNode(
       level: level as KnowledgeLevel,
       name,
       definition,
+      ...(borrowed ? { borrowed } : {}),
+      rejected,
       ...(sync ? { sync } : {}),
       sourcePath,
     },
@@ -382,7 +495,62 @@ export async function loadTermNodes(
     unique.push(term);
   }
 
+  diagnostics.push(...rejectedNameDiagnostics(unique));
+
   return { terms: unique, diagnostics };
+}
+
+/**
+ * PL1312: a declared name that another term weighed and rejected as wrong.
+ *
+ * What it asserts is not "this is a duplicate" — nothing can tell a duplicate
+ * wearing the rejected name from a real second sense. It asserts that a
+ * recorded decision is being contradicted without saying so, and every repair
+ * leaves a trace: a two-word name, or a deleted rejection that is itself the
+ * record of the reversal.
+ *
+ * Global and case-insensitive on the whole name, matching PL1304 exactly,
+ * because marks resolve globally — a reader of any statement resolves *plan*
+ * without knowing what level they are on, so a level-scoped rejection would
+ * be incoherent with the notation.
+ *
+ * A second pass over the deduplicated list rather than a check inside the load
+ * loop, so the finding does not depend on which file was read first.
+ *
+ * `taken` rejections are skipped. That stance says the word already names
+ * something else here, so the thing being declared is what the rejection
+ * PREDICTED, not a contradiction of it; reporting it would fire on the case it
+ * was written to describe, and the only clean repair would be deleting a true
+ * record.
+ */
+export function rejectedNameDiagnostics(terms: SourceTermNode[]): Diagnostic[] {
+  const sorted = [...terms].sort((left, right) => left.id.localeCompare(right.id));
+  const declared = new Map<string, SourceTermNode>();
+  for (const term of sorted) {
+    if (!declared.has(term.name.toLowerCase())) declared.set(term.name.toLowerCase(), term);
+  }
+  const diagnostics: Diagnostic[] = [];
+  for (const term of sorted) {
+    for (const rejection of term.rejected) {
+      if (rejection.stance !== "wrong") continue;
+      const collides = declared.get(rejection.name.toLowerCase());
+      if (!collides || collides.id === term.id) continue;
+      diagnostics.push({
+        code: "PL1312 REJECTED_TERM_NAME",
+        severity: "error",
+        message: `${collides.id} names "${collides.name}", which ${term.id} rejected: ${rejection.because}`,
+        nodeId: collides.id,
+        path: collides.sourcePath,
+        action: "edit-node",
+        details: {
+          declared: { id: collides.id, name: collides.name, level: collides.level },
+          rejectedBy: { id: term.id, name: term.name, level: term.level },
+          because: rejection.because,
+        },
+      });
+    }
+  }
+  return diagnostics;
 }
 
 function markDiagnostics(
@@ -493,7 +661,17 @@ export function definitionMarkDiagnostics(
   return diagnostics;
 }
 
-/** The meaning of a term: what a rename, a move, or a rewrite changes. */
+/**
+ * The meaning of a term: what a rename, a move, or a rewrite changes.
+ *
+ * `borrowed` and `rejected` are deliberately outside it. Discovering that your
+ * word matches an established one does not change what any statement means,
+ * and neither does writing down a name you passed on — so neither restates the
+ * statements that speak the word. Editing the DEFINITION to match a borrowed
+ * sense does change meaning, and that still propagates. Without this line, a
+ * pass attaching origins to an existing vocabulary would restate the whole
+ * graph for no change in meaning, and would simply not get done.
+ */
 export function semanticTermFingerprint(term: TermNode): string {
   return digest(
     { id: term.id, level: term.level, name: term.name, definition: term.definition },
@@ -508,6 +686,8 @@ export function termFingerprint(term: TermNode): string {
       level: term.level,
       name: term.name,
       definition: term.definition,
+      borrowed: term.borrowed ?? null,
+      rejected: term.rejected,
       sync: term.sync ?? null,
     },
     "product-lint-term-node-v1",
@@ -526,6 +706,76 @@ export function vocabularyDigest(termsUsed: SourceTermNode[]): string {
   return digest(pairs, "product-lint-vocabulary-v1");
 }
 
+export interface RecordedRejection {
+  /** The term as it should be written, absent when the rejection is refused. */
+  term?: SourceTermNode;
+  diagnostics: Diagnostic[];
+}
+
+/**
+ * The write behind `term reject`.
+ *
+ * Required `rejected` reaches exactly one moment, the term's creation, and the
+ * alternatives to a name are usually weighed later — while writing a statement,
+ * about a term declared months ago and not currently open. Recording one then
+ * costs finding the file and matching an array shape, which is more than the
+ * decision cost, so it does not happen and the alternative is gone by lunch.
+ *
+ * Refusals reuse the codes the write would have caused rather than inventing a
+ * command-time family, so the message here is the message `validate` would give.
+ * Refusing beats writing a file already known to fail.
+ */
+export function recordRejection(
+  terms: SourceTermNode[],
+  termId: string,
+  rejection: TermRejection,
+): RecordedRejection {
+  const vocabulary = buildVocabulary(terms);
+  const term = vocabulary.byId.get(termId);
+  if (!term) throw new Error(`Unknown term: ${termId}`);
+
+  const name = rejection.name.trim();
+  const because = rejection.because.trim();
+  const refuse = (code: string, message: string): RecordedRejection => ({
+    diagnostics: [
+      { code, severity: "error", message, nodeId: term.id, path: term.sourcePath, action: "edit-node" },
+    ],
+  });
+
+  if (!name || !because) {
+    return refuse(
+      "PL1301 INVALID_TERM",
+      `A rejection carries a non-empty ${!name ? "name" : "because"}. A bare list of names is a suppression list, not a decision.`,
+    );
+  }
+  if (name.toLowerCase() === term.name.toLowerCase()) {
+    return refuse("PL1301 INVALID_TERM", `A term cannot reject its own name: "${name}".`);
+  }
+  if (term.rejected.some((item) => item.name.toLowerCase() === name.toLowerCase())) {
+    return refuse(
+      "PL1301 INVALID_TERM",
+      `${term.id} already rejected "${name}". One name, one reason — edit the existing entry to change it.`,
+    );
+  }
+  // The collision named before the file changes, not one second later. A word
+  // that is already a declared name is spoken for rather than wrong, and the
+  // stance that says so is the repair.
+  if (rejection.stance === "wrong") {
+    const declared = vocabulary.byName.get(name.toLowerCase());
+    if (declared) {
+      return refuse(
+        "PL1312 REJECTED_TERM_NAME",
+        `${declared.id} already names "${declared.name}", so rejecting it as wrong for ${term.id} would refuse a declaration that exists. If the word is spoken for rather than wrong, record it with the taken stance instead.`,
+      );
+    }
+  }
+
+  return {
+    term: { ...term, rejected: [...term.rejected, { name, stance: rejection.stance, because }] },
+    diagnostics: [],
+  };
+}
+
 export function serializeTermNode(term: SourceTermNode): string {
   const output: TermNode = {
     ...(term.$schema ? { $schema: term.$schema } : {}),
@@ -534,6 +784,8 @@ export function serializeTermNode(term: SourceTermNode): string {
     level: term.level,
     name: term.name,
     definition: term.definition,
+    ...(term.borrowed ? { borrowed: term.borrowed } : {}),
+    rejected: term.rejected,
     ...(term.sync ? { sync: term.sync } : {}),
   };
   return `${stableStringify(output, 2)}\n`;

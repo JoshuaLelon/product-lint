@@ -40,7 +40,7 @@ import {
   semanticTermFingerprint,
   termFingerprint,
 } from "./terms.js";
-import { unmarkedUseDiagnostics } from "./vocabulary.js";
+import { rejectedNameUseDiagnostics, unmarkedUseDiagnostics } from "./vocabulary.js";
 import { classifyDeletions, deletionDiagnostics } from "./removal.js";
 
 function emptyClassification(): NodeChangeClassification {
@@ -397,6 +397,7 @@ export async function checkStagedCommit(config: ResolvedConfig): Promise<CommitC
     nodeChanges.semantic.has(node.id),
   );
   diagnostics.push(...unmarkedUseDiagnostics(changedStatementNodes, stagedValidation.terms));
+  diagnostics.push(...rejectedNameUseDiagnostics(changedStatementNodes, stagedValidation.terms));
 
   return { diagnostics, nodeChanges, changedImplementationFiles, deletions };
 }

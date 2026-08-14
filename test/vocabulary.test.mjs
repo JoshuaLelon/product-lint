@@ -6,7 +6,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   affectedByTerm,
@@ -23,8 +23,14 @@ import {
   loadConfig,
   NODE_SHAPE,
   parseMarks,
+  recordRejection,
+  rejectedNameDiagnostics,
+  rejectedNameUseDiagnostics,
   renderFileKnowledgeForLlm,
   resolveMark,
+  semanticTermFingerprint,
+  serializeTermNode,
+  termFingerprint,
   synchronizeStaged,
   synonymCandidateDiagnostics,
   unmarkedUseDiagnostics,
@@ -52,6 +58,7 @@ function term(overrides) {
     level: "product",
     name: "version",
     definition: "A version is one uploaded rendition of a shot.",
+    rejected: [],
     sourcePath: "docs/product/terms/version.json",
     ...overrides,
   };
@@ -821,4 +828,431 @@ test("affected-by a term lists every text that speaks the word", () => {
   assert.deepEqual(result.nodes.map((node) => node.id), ["product.current-version"]);
   assert.deepEqual(result.terms.map((item) => item.id), ["term.delivery"]);
   assert.throws(() => affectedByTerm(nodes, terms, "term.missing"), /Unknown term/);
+});
+
+// --- Borrowed words and the names that lost ---
+//
+// A naming decision leaves no trace by default: you weigh three words, pick
+// one, and the only evidence is that a different word is present. These tests
+// hold the two halves of the repair — where a word came from, and what it beat.
+
+test("a term records where its word came from, and rejections it weighed", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.bloat",
+    level: "context",
+    name: "bloat",
+    definition: "Bloat is information in front of a member that the member does not want.",
+    borrowed:
+      "Low precision, from information retrieval. Precision is a metric on a result set; bloat names its failure state as something a member meets.",
+    rejected: [
+      {
+        name: "noise",
+        stance: "wrong",
+        because: "Shannon's signal-to-noise is about transmission, not relevance.",
+      },
+      {
+        name: "gap",
+        stance: "taken",
+        because: "Already load-bearing for a deficit in what a member understands.",
+      },
+    ],
+  });
+  const status = await inspectWorkingTree(config);
+  assert.equal(hasErrors(status.validation.diagnostics), false);
+  const stored = status.validation.terms.find((item) => item.id === "term.bloat");
+  assert.match(stored.borrowed, /information retrieval/);
+  assert.deepEqual(stored.rejected.map((item) => `${item.name}:${item.stance}`), [
+    "noise:wrong",
+    "gap:taken",
+  ]);
+});
+
+test("rejected is required, and the empty list is the answer when nothing was weighed", async () => {
+  const { root, config } = await createRepository();
+  const file = await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: "A version is one uploaded rendition of a shot.",
+  });
+  const withoutField = JSON.parse(await readFile(file, "utf8"));
+  delete withoutField.rejected;
+  await writeFile(file, `${JSON.stringify(withoutField, null, 2)}\n`, "utf8");
+  const missing = await inspectWorkingTree(config);
+  const diagnostic = missing.validation.diagnostics.find(
+    (item) => item.code === "PL1301 INVALID_TERM",
+  );
+  assert.ok(diagnostic, "an absent list and an empty one must not be the same byte");
+  assert.match(diagnostic.message, /missing "rejected"/);
+
+  // The distinction the requirement buys: [] says nothing was weighed, where
+  // silence used to say only that nobody wrote it down.
+  await writeFile(file, `${JSON.stringify({ ...withoutField, rejected: [] }, null, 2)}\n`, "utf8");
+  const empty = await inspectWorkingTree(config);
+  assert.equal(hasErrors(empty.validation.diagnostics), false);
+});
+
+test("a rejection carries a reason, a known stance, and never the term's own name", async () => {
+  const { root, config } = await createRepository();
+  const file = await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: "A version is one uploaded rendition of a shot.",
+  });
+  const base = JSON.parse(await readFile(file, "utf8"));
+  const cases = [
+    [{ name: "render", stance: "wrong" }, /non-empty because/],
+    [{ name: "render", stance: "maybe", because: "Unsure." }, /Invalid rejection stance/],
+    [{ name: "Version", stance: "wrong", because: "Circular." }, /cannot reject its own name/],
+  ];
+  for (const [rejection, pattern] of cases) {
+    await writeFile(file, `${JSON.stringify({ ...base, rejected: [rejection] }, null, 2)}\n`, "utf8");
+    const status = await inspectWorkingTree(config);
+    const diagnostic = status.validation.diagnostics.find(
+      (item) => item.code === "PL1301 INVALID_TERM",
+    );
+    assert.ok(diagnostic, `no diagnostic for ${JSON.stringify(rejection)}`);
+    assert.match(diagnostic.message, pattern);
+  }
+});
+
+test("a name another term rejected as wrong cannot be declared", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.bloat",
+    level: "context",
+    name: "bloat",
+    definition: "Bloat is information in front of a member that the member does not want.",
+    rejected: [
+      {
+        name: "clutter",
+        stance: "wrong",
+        because: "Names how the screen looks, not what the member did not want.",
+      },
+    ],
+  });
+  await writeTerm(root, {
+    id: "term.clutter",
+    level: "product",
+    name: "clutter",
+    definition: "Clutter is the share of a list the product declines to rank.",
+  });
+  const status = await inspectWorkingTree(config);
+  const diagnostic = status.validation.diagnostics.find(
+    (item) => item.code === "PL1312 REJECTED_TERM_NAME",
+  );
+  assert.ok(diagnostic);
+  assert.equal(diagnostic.severity, "error");
+  // Named on the declaration, because that is the file with a name to change.
+  assert.equal(diagnostic.nodeId, "term.clutter");
+  assert.equal(diagnostic.details.rejectedBy.id, "term.bloat");
+  assert.match(diagnostic.message, /Names how the screen looks/);
+  // The repair is PL1304's repair, not deletion — a rejection deleted to quiet
+  // the linter destroys the record the field exists to keep.
+  const text = formatDiagnostic(diagnostic);
+  assert.match(text, /two-word name/);
+});
+
+test("the collision is global and order-independent, the way PL1304 is", () => {
+  const rejecting = term({
+    id: "term.bloat",
+    level: "context",
+    name: "bloat",
+    definition: "Bloat is information in front of a member that the member does not want.",
+    sourcePath: "docs/context/terms/bloat.json",
+    rejected: [{ name: "Clutter", stance: "wrong", because: "Names the screen, not the want." }],
+  });
+  const declaring = term({
+    id: "term.clutter",
+    level: "mechanism",
+    name: "clutter",
+    definition: "Clutter is the node count a view refuses to exceed.",
+    sourcePath: "docs/mechanism/terms/clutter.json",
+  });
+  // Marks resolve globally, so a level-scoped rejection would be incoherent
+  // with the notation: the mechanism declaration collides with a context
+  // rejection, and the case of the first letter does not save it.
+  const forward = rejectedNameDiagnostics([rejecting, declaring]);
+  const reverse = rejectedNameDiagnostics([declaring, rejecting]);
+  assert.equal(forward.length, 1);
+  assert.deepEqual(forward, reverse, "the finding must not depend on which file was read first");
+});
+
+test("a taken rejection is recorded and never enforced", () => {
+  const rejecting = term({
+    id: "term.fracture",
+    level: "context",
+    name: "fracture",
+    definition: "Fracture is what a member wanted and did not meet, its absence unseen.",
+    sourcePath: "docs/context/terms/fracture.json",
+    rejected: [
+      {
+        name: "gap",
+        stance: "taken",
+        because: "Already load-bearing for a deficit in what a member understands.",
+      },
+    ],
+  });
+  const declaring = term({
+    id: "term.gap",
+    level: "product",
+    name: "gap",
+    definition: "A gap is a deficit in what a member understands about a topic.",
+    sourcePath: "docs/product/terms/gap.json",
+  });
+  // The declaration is what the rejection PREDICTED. Reporting it would fire on
+  // the case the note was written to describe, and the only clean repair would
+  // be deleting a true record. PL1304 still catches any real name collision.
+  assert.deepEqual(rejectedNameDiagnostics([rejecting, declaring]), []);
+
+  const nodes = sourced([
+    {
+      id: "product.closes-a-gap",
+      level: "product",
+      statement: "The system closes a gap with content the member already holds.",
+      constrainedBy: [],
+    },
+  ]);
+  assert.deepEqual(rejectedNameUseDiagnostics(nodes, [rejecting]), []);
+});
+
+test("a wrong rejection is scanned in prose, at its level or deeper", () => {
+  const nodes = sourced([
+    {
+      id: "audience.role.member",
+      level: "audience",
+      statement: "Clutter is what people who keep lists complain about.",
+      constrainedBy: [],
+    },
+    {
+      id: "context.stale-lists",
+      level: "context",
+      statement: "Clutter on the day view costs a member the task they opened it for.",
+      constrainedBy: [],
+    },
+    {
+      id: "product.one-list",
+      level: "product",
+      statement: 'The system labels the control "Hide clutter" and removes the rest.',
+      constrainedBy: [],
+    },
+    {
+      id: "behavior.marked",
+      level: "behavior",
+      statement: "A member meets less clutter than the system knows about.",
+      constrainedBy: [],
+    },
+  ]);
+  const terms = [
+    term({
+      id: "term.bloat",
+      level: "context",
+      name: "bloat",
+      definition: "Bloat is information in front of a member that the member does not want.",
+      sourcePath: "docs/context/terms/bloat.json",
+      rejected: [
+        {
+          name: "clutter",
+          stance: "wrong",
+          because: "Names how the screen looks, not what the member did not want.",
+        },
+      ],
+    }),
+  ];
+  const diagnostics = rejectedNameUseDiagnostics(nodes, terms);
+  assert.equal(diagnostics.length, 1, "one block per rejection, the way PL0801 folds per term");
+  assert.equal(diagnostics[0].severity, "info");
+  const uses = diagnostics[0].details.uses.map((use) => use.id).sort();
+  // Audience is shallower than the term and could not mark it; the quoted
+  // surface literal is a screen's word, not a candidate.
+  assert.deepEqual(uses, ["behavior.marked", "context.stale-lists"]);
+  assert.match(formatDiagnostic(diagnostics[0]), /uses \(2\):/);
+});
+
+test("an origin and a rejection do not restate the statements that speak the word", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: "A version is one uploaded rendition of a shot.",
+  });
+  const node = await readNode(root, "product", "current-version");
+  await writeNode(root, { ...node, statement: "Each shot has one current *version*." });
+  await git(root, "add", ".");
+  await synchronizeStaged(config);
+  await git(root, "add", ".");
+  await git(root, "commit", "-qm", "docs: mark the version uses\n\nKnowledge-Change: product.current-version");
+
+  const before = (await inspectWorkingTree(config)).validation.terms.find(
+    (item) => item.id === "term.version",
+  );
+  const after = {
+    ...before,
+    borrowed: "Revision, from version control. Ours is an uploaded rendition rather than a commit.",
+    rejected: [{ name: "cut", stance: "wrong", because: "An editing word, not an upload." }],
+  };
+  // The line the retrofit depends on: attaching an origin to an existing word
+  // changes no statement's meaning, so it must not go stale downstream. A pass
+  // over seventy terms that restated thirteen files each would not get done.
+  assert.equal(semanticTermFingerprint(before), semanticTermFingerprint(after));
+  assert.notEqual(termFingerprint(before), termFingerprint(after));
+
+  await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: before.definition,
+    borrowed: after.borrowed,
+    rejected: after.rejected,
+  });
+  const status = await inspectWorkingTree(config);
+  assert.equal(
+    status.synchronization.some((item) => item.code === "PL2004 STALE_VOCABULARY"),
+    false,
+    "an origin is not a change of meaning",
+  );
+  // Editing the definition still propagates, which is the half that must stay.
+  await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: "A version is one rendition a reviewer may approve.",
+    rejected: [],
+  });
+  const edited = await inspectWorkingTree(config);
+  assert.ok(
+    edited.synchronization.some(
+      (item) => item.code === "PL2004 STALE_VOCABULARY" && item.nodeId === "product.current-version",
+    ),
+    "a definition change must still reach every statement that speaks the word",
+  );
+});
+
+test("both reader surfaces carry the words already weighed", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: "A version is one uploaded rendition of a shot.",
+    borrowed: "Revision, from version control. Ours is an upload rather than a commit.",
+    rejected: [{ name: "cut", stance: "wrong", because: "An editing word, not an upload." }],
+  });
+  await writeNode(root, {
+    id: "product.second-rule",
+    level: "product",
+    statement: "A second product rule with nothing under it yet.",
+    constrainedBy: ["context.review-problem"],
+    sync: { constraintsDigest: "pending" },
+  });
+  const status = await inspectWorkingTree(config);
+  const missing = status.frontier.diagnostics.find(
+    (item) => item.code === "PL0201 MISSING_BEHAVIOR" && item.frontier === "product.second-rule",
+  );
+  // Scanned to answer "does a word for this exist already", so names and
+  // stances, and the reasons stay one file away.
+  const frontierText = formatDiagnostic(missing);
+  assert.match(frontierText, /borrowed: Revision, from version control/);
+  assert.match(frontierText, /rejected: cut \(wrong\)/);
+  assert.doesNotMatch(frontierText, /An editing word/);
+
+  // Edited from, so the reason in full — what an agent needs to argue with a
+  // rejection rather than merely avoid the word.
+  const nodes = sourced(canonicalNodes());
+  nodes[2] = { ...nodes[2], statement: "Each shot has one current *version*." };
+  const graph = buildKnowledgeGraph(nodes).graph;
+  const llmText = renderFileKnowledgeForLlm(
+    knowledgeForFile(graph, [], "src/approve.ts"),
+    status.validation.terms,
+  );
+  assert.match(llmText, /borrowed: Revision, from version control/);
+  assert.match(llmText, /rejected: cut \(wrong\) — An editing word, not an upload\./);
+  assert.match(VOCABULARY_RULE, /Record the names you weighed and passed on/);
+});
+
+// --- Recording a loser after the fact ---
+//
+// Required `rejected` reaches one moment, the term's creation. Alternatives are
+// usually weighed later, about a term declared months ago and not open — and a
+// recording that costs more than the decision does not happen.
+
+test("a rejection can be recorded on a term that is not being edited", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.rung",
+    level: "behavior",
+    name: "rung",
+    definition: "A rung is one fixed time the day offers for work.",
+  });
+  const terms = (await inspectWorkingTree(config)).validation.terms;
+  const result = recordRejection(terms, "term.rung", {
+    name: "cadence",
+    stance: "wrong",
+    because: "Names the tempo, not the slot.",
+  });
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.term.rejected, [
+    { name: "cadence", stance: "wrong", because: "Names the tempo, not the slot." },
+  ]);
+  // Written through the same serializer the rest of the tool uses, so the file
+  // a command touches and the file a human writes are the same shape.
+  const text = serializeTermNode(result.term);
+  assert.equal(JSON.parse(text).rejected.length, 1);
+  assert.throws(() => recordRejection(terms, "term.missing", {
+    name: "x", stance: "wrong", because: "y",
+  }), /Unknown term/);
+});
+
+test("the write is refused with the diagnostic it would have caused", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.rung",
+    level: "behavior",
+    name: "rung",
+    definition: "A rung is one fixed time the day offers for work.",
+    rejected: [{ name: "cadence", stance: "wrong", because: "Names the tempo, not the slot." }],
+  });
+  await writeTerm(root, {
+    id: "term.slot",
+    level: "behavior",
+    name: "slot",
+    definition: "A slot is a span a member holds for one task.",
+  });
+  const terms = (await inspectWorkingTree(config)).validation.terms;
+  const refusals = [
+    [{ name: "rung", stance: "wrong", because: "Circular." }, "PL1301 INVALID_TERM", /own name/],
+    [{ name: "cadence", stance: "taken", because: "Second thought." }, "PL1301 INVALID_TERM", /already rejected/],
+    [{ name: "  ", stance: "wrong", because: "Nameless." }, "PL1301 INVALID_TERM", /non-empty name/],
+    [{ name: "beat", stance: "wrong", because: "  " }, "PL1301 INVALID_TERM", /non-empty because/],
+    // The collision named before the file changes rather than one second later,
+    // and the message carries the stance that is the repair.
+    [{ name: "slot", stance: "wrong", because: "Not the same." }, "PL1312 REJECTED_TERM_NAME", /taken stance instead/],
+  ];
+  for (const [rejection, code, pattern] of refusals) {
+    const result = recordRejection(terms, "term.rung", rejection);
+    assert.equal(result.term, undefined, `${rejection.name} was written anyway`);
+    assert.equal(result.diagnostics[0].code, code);
+    assert.match(result.diagnostics[0].message, pattern);
+  }
+  // A declared name is spoken for, not wrong, and that stance is allowed.
+  const taken = recordRejection(terms, "term.rung", {
+    name: "slot",
+    stance: "taken",
+    because: "Already load-bearing for a span a member holds.",
+  });
+  assert.deepEqual(taken.diagnostics, []);
+  assert.equal(taken.term.rejected.length, 2);
+});
+
+test("the invalid-term repair names every required field", () => {
+  const diagnostic = annotateDiagnostic({
+    code: "PL1301 INVALID_TERM",
+    severity: "error",
+    message: "x",
+  });
+  assert.match(diagnostic.fix, /rejected/, "a repair that omits a required field is a wrong repair");
+  assert.match(diagnostic.fix, /wrong or taken/);
 });

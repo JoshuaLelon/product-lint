@@ -102,7 +102,7 @@ const FIXES: Record<string, string> = {
 
   // Terms
   "PL1301 INVALID_TERM":
-    "Replace the file contents with a single JSON object holding $schema, schemaVersion, id, level, name, definition, and optionally sync.",
+    'Replace the file contents with a single JSON object holding $schema, schemaVersion, id, level, name, definition, rejected, and optionally borrowed and sync. rejected is a list of {name, stance, because}, stance being wrong or taken; write "rejected": [] to say no other name was weighed.',
   "PL1302 INVALID_TERM_ID":
     'Rewrite the id as "term." followed by lowercase words joined by hyphens, for example "term.retain-plan".',
   "PL1303 DUPLICATE_TERM_ID":
@@ -188,6 +188,10 @@ const FIXES: Record<string, string> = {
     "Mark the statements that use this word, or delete the declaration if nothing needs it.",
   "PL0805 TERM_UNUSED_AT_ITS_LEVEL":
     "No statement at the declaring level marks this term. Either mark one that uses it, or move the declaration down to the shallowest level whose statements do.",
+  "PL0806 REJECTED_NAME_IN_PROSE":
+    "If the sentence means the term, use the term's name and mark it. If it means a second thing, that thing needs a name of its own — a rejection standing in the way says you decided so once already. If the word is ordinary English here, leave it: this report is a review, not a gate.",
+  "PL1312 REJECTED_TERM_NAME":
+    "Give this term a two-word name saying which sense it carries — the repair PL1304 already prescribes for one word two levels want, and it produces the better name anyway. Delete the rejection instead only if you actually changed your mind; the deleted line is then the record of the reversal. If the word is spoken for rather than wrong, the rejection's stance is taken, not wrong, and nothing stands in your way.",
 };
 
 /**
@@ -204,6 +208,10 @@ const ASKS: Record<string, string> = {
     "If you cannot tell which reading is true, that is the finding. Show the user the sentence beside the definition and let them say what was meant.",
   "PL0802 SYNONYM_CANDIDATE":
     "This is a judgement, so put the pair and both definitions to the user and record only what they confirm.",
+  "PL0806 REJECTED_NAME_IN_PROSE":
+    "Show the user the sentence beside the rejection's reason and let them say which it is: the term meant, a second thing, or ordinary English.",
+  "PL1312 REJECTED_TERM_NAME":
+    "Nothing can tell a duplicate wearing the rejected name from a real second sense. Show the user the rejection's reason beside both definitions and record only what they confirm.",
   "PL2108 NODE_REMOVED":
     "A removal destroys a claim someone approved, so it is confirmed, never inferred. Show the owner the statement and what its parent keeps, and record only what they confirm: removed on purpose, or restored.",
   "PL2109 NODE_RENAMED":
@@ -348,6 +356,8 @@ export const VOCABULARY_RULE = [
   "Declare a term at the shallowest level whose statements need it: docs/<level>/terms/<slug>.json. Every level may declare, so a name for something in the member's world belongs at context, not at product.",
   "Define the thing, not the promise. Say what kind of thing it is and what tells it from its neighbours; the laws about it stay in the nodes that state them.",
   "A statement may use terms of its own level and above, never below. If you need a deeper word, you are stating a deeper thing.",
+  "Record the names you weighed and passed on, and why: rejected. A statement can be reconstructed from the problem and the code; a discarded word cannot be reconstructed from anything, and it exists only while you are choosing. Say wrong when the word does not name this thing, taken when it already names something else here. An empty list means nothing was weighed.",
+  "If the word is borrowed from a field that owns it already, say so and say how our sense departs: borrowed. Naming the failure state of an established metric is not inventing terminology, as long as the node says so.",
 ].join("\n");
 
 /** Diagnostics that ask a human or an agent to write prose. */

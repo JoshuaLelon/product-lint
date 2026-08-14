@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from "node:path";
+import { writeFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
 import type { Diagnostic, ResolvedConfig } from "./types.js";
 import { loadConfig } from "./config.js";
@@ -15,6 +16,7 @@ import { checkCommitMessage, checkStagedCommit } from "./commit.js";
 import { initProject } from "./init.js";
 import { isWorkingTreeDirty, stagedChanges } from "./git.js";
 import { affectedByTerm, vocabularyReport } from "./vocabulary.js";
+import { loadTermNodes, recordRejection, serializeTermNode } from "./terms.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
 
 function usage(): string {
@@ -27,6 +29,7 @@ Usage:
   product-lint frontier [--json]
   product-lint ship [--json]
   product-lint vocabulary [--staged] [--json]
+  product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
   product-lint knowledge for-file <path> [--json]
   product-lint knowledge affected-by <node-id|term-id> [--json]
   product-lint knowledge slice <set=value,...> [--json]
@@ -246,6 +249,77 @@ async function main(): Promise<void> {
     process.stdout.write(formatDiagnostics(report.diagnostics));
     // A review surface, never a gate: everything here is a judgement for a
     // human, so the exit code stays 0 on findings.
+    return;
+  }
+
+  if (command === "term") {
+    const [action, ...tail] = rest;
+    if (action !== "reject") {
+      throw new Error(`Unknown term action: ${action ?? "(none)"}\n\n${usage()}`);
+    }
+    const parsed = parseArgs({
+      args: tail,
+      options: {
+        config: { type: "string" },
+        json: { type: "boolean", default: false },
+        wrong: { type: "boolean", default: false },
+        taken: { type: "boolean", default: false },
+        because: { type: "string" },
+      },
+      allowPositionals: true,
+      strict: true,
+    });
+    // A multi-word name survives either quoting: "false drop" arrives as one
+    // positional, false drop as two.
+    const [termId, ...nameParts] = parsed.positionals;
+    const name = nameParts.join(" ");
+    if (!termId || !name) {
+      throw new Error(`Missing term id or name.\n\n  product-lint term reject <term-id> <name> --wrong|--taken --because <reason>\n`);
+    }
+    // Exactly one stance, never a default. Which of the two it is decides
+    // whether the name is guarded or merely recorded, and guessing for the
+    // author would put a guard on a word they said was spoken for.
+    if (parsed.values.wrong === parsed.values.taken) {
+      throw new Error(
+        "Give exactly one stance.\n  --wrong  the word does not name this thing; the name is then refused to other declarations and reported in prose.\n  --taken  the word already names something else here; recorded, never enforced.",
+      );
+    }
+    const because = parsed.values.because?.trim();
+    if (!because) {
+      throw new Error(
+        "A rejection carries its reason: --because <text>. A bare list of names is a suppression list, not a decision.",
+      );
+    }
+
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    const snapshot = await createSnapshot(config, "working");
+    const loaded = await loadTermNodes(config, snapshot);
+    if (hasErrors(loaded.diagnostics)) {
+      process.stdout.write(formatDiagnostics(loaded.diagnostics));
+      process.exitCode = 1;
+      return;
+    }
+    const result = recordRejection(loaded.terms, termId, {
+      name,
+      stance: parsed.values.wrong ? "wrong" : "taken",
+      because,
+    });
+    if (!result.term) {
+      if (parsed.values.json) console.log(stringifyJson(annotateDiagnostics(result.diagnostics)));
+      else process.stdout.write(formatDiagnostics(result.diagnostics));
+      process.exitCode = 1;
+      return;
+    }
+    const file = path.join(config.root, result.term.sourcePath);
+    await writeFile(file, serializeTermNode(result.term), "utf8");
+    if (parsed.values.json) {
+      console.log(stringifyJson({ term: result.term, path: result.term.sourcePath }));
+      return;
+    }
+    const stance = parsed.values.wrong ? "wrong" : "taken";
+    console.log(`${result.term.id} rejected "${name}" (${stance})`);
+    console.log(`  because: ${because}`);
+    console.log(`  ${result.term.sourcePath}`);
     return;
   }
 

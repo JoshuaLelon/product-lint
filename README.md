@@ -748,7 +748,12 @@ A **term** is declared where it is first needed, inside the level that needs it:
   "id": "term.plan",
   "level": "product",
   "name": "plan",
-  "definition": "A plan is the set of doable tasks a member approves to resolve one ambiguous task."
+  "definition": "A plan is the set of doable tasks a member approves to resolve one ambiguous task.",
+  "borrowed": "Schedule, from scheduling theory. Ours is approved rather than computed, and it resolves one task rather than sequencing many.",
+  "rejected": [
+    { "name": "schedule", "stance": "wrong", "because": "Names the times, not the set of tasks." },
+    { "name": "list", "stance": "taken", "because": "Already load-bearing for anything a member collects." }
+  ]
 }
 ```
 
@@ -769,6 +774,61 @@ declaration, globally (`PL1304 DUPLICATE_TERM_NAME` — one word cannot carry tw
 the repair is a two-word rename: *day plan*, *retain plan*). And vocabulary flows down
 only (`PL1308 TERM_FROM_BELOW`): a statement may use terms of its own level and above,
 never below, so a product law written in a surface's or a mechanism's word is named.
+
+`PL1312 REJECTED_TERM_NAME` refuses a name another term rejected as `wrong`. What it
+asserts is not "this is a duplicate" — nothing can tell a duplicate wearing the rejected
+name from a real second sense — but that a recorded decision is being contradicted without
+saying so. The repair is `PL1304`'s repair: a two-word name saying which sense this one
+carries, which produces the better name anyway. Deleting the rejection is the other route,
+and it is right only when you actually changed your mind, in which case the deleted line is
+the record of the reversal. The check is global and case-insensitive on the whole name,
+matching `PL1304` exactly, because marks resolve globally — a reader of any statement
+resolves `*plan*` without knowing what level they are on, so a level-scoped rejection would
+be incoherent with the notation. It runs as a second pass over the loaded terms, so the
+finding never depends on which file was read first.
+
+Neither `borrowed` nor `rejected` joins `semanticTermFingerprint`. Discovering that your
+word matches an established one does not change what any statement means, and neither does
+writing down a name you passed on, so neither restates the statements that speak the word:
+both changes classify as synchronization-only. Editing the `definition` to match a borrowed
+sense *does* change meaning, and that still propagates. Without this line, attaching origins
+to an existing vocabulary would restate the whole graph for no change in meaning — and
+would simply not get done.
+
+### Where a word came from, and what it beat
+
+Most product nouns are not coinages. The thing already has a name in information retrieval,
+in records management, in scheduling theory — and a borrowed name is legible to anyone who
+knows the field and looked up by anyone who does not. `borrowed` is one sentence saying
+where the word comes from and how this graph's sense departs from it. The bar is not an
+exact match: a term fits when the idea lands most of the way, and the departure sentence is
+where you say what you changed. Naming the failure state of an established metric is not
+inventing terminology as long as the node says so.
+
+It is one free string on purpose. Nothing queries it — it exists to be read in `frontier`
+and the `llms` views before a statement is written — and an object with a `source` slot
+would invite completing the set, which is how a fluent wrong citation gets written.
+
+`rejected` is the names you weighed and passed on, with the reason. A naming decision
+otherwise leaves no trace: you consider three words, pick one, and the only evidence is
+that a different word is present. Nobody can then tell a name chosen over alternatives from
+the first word that came to mind. The field is **required**, and `[]` is the honest answer
+when nothing was weighed — absent and empty would otherwise be one byte with two meanings,
+and "nobody wrote it down" reading as "nothing was considered" is what makes an unrecorded
+term useless rather than merely incomplete. Write the losers down while you are choosing:
+a statement can be reconstructed from the problem and the code, and a discarded word cannot
+be reconstructed from anything.
+
+Each rejection carries a `stance`, because two rejections are different facts:
+
+- **`wrong`** — the word does not name this thing. Guarded: `PL1312` refuses the name to
+  another declaration, and `PL0806` reports it appearing in prose.
+- **`taken`** — the word already names something else here. Recorded, never enforced.
+
+Rejecting a name because it is spoken for is a common and correct move, and it predicts
+that the word goes on being used — and eventually declared — for that other thing. Guarding
+it would fire on exactly the case it was written to describe, and the only clean repair
+would be deleting a true record. `PL1304` still catches any real collision with a name.
 
 Every level may declare, audience and context included. A term's level is decided the way
 a node's is — by what would falsify it — so a name for something in the member's world is
@@ -797,9 +857,12 @@ declared terms, zero noise, which is what keeps an undeclared term legal forever
 `PL0802 SYNONYM_CANDIDATE` reports two definitions written in mostly the same words, and a
 human decides — two words *may* name two things. `PL0803 CAPITALIZED_UNDECLARED` is the
 migration seed: mid-sentence capitals are the convention statements were already
-half-using for product nouns. `commit check --staged` additionally prints `PL0801` for the
-statements in the diff, info only — the one moment the mark costs two characters in a file
-already open.
+half-using for product nouns. `PL0806 REJECTED_NAME_IN_PROSE` is `PL0801`'s scan pointed at
+the losers instead of the winner: a name rejected as `wrong`, written unmarked in a
+statement at the term's level or deeper. It catches the drift the rejection was recorded to
+prevent — you decide a word does not name the thing, then reach for it six months later.
+`commit check --staged` additionally prints `PL0801` and `PL0806` for the statements in the
+diff, info only — the one moment the mark costs two characters in a file already open.
 
 The fourth authoring rule travels with the same diagnostics that carry the other three,
 and the frontier prints the **terms in scope** beside the nodes already at the level, for
@@ -809,6 +872,23 @@ meets *plan* with its meaning on the page it is editing from.
 
 `knowledge affected-by term.plan` lists the blast radius of a definition change or a
 rename: every statement and definition that speaks the word.
+
+A required `rejected` reaches one moment, the term's creation, and alternatives are usually
+weighed later — while writing a statement, about a term declared months ago and not open.
+Recording one then costs finding the file and matching an array shape, which is more than
+the decision cost, so it does not happen:
+
+```bash
+npx product-lint term reject term.rung cadence --wrong --because "Names the tempo, not the slot."
+```
+
+Exactly one stance, never a default: which one it is decides whether the name is guarded or
+merely recorded, and guessing for the author would put a guard on a word they said was
+spoken for. A reason is required for the same reason the schema requires it. The write is
+refused with the diagnostic it would have caused — rejecting a name that is already declared
+as `wrong` reports `PL1312` before the file changes, and says that `--taken` is the stance
+that fits. There is no `term add`: the required field and the load diagnostics already name
+every mistake a scaffold would prevent.
 
 ## Overlapping mechanisms
 
@@ -863,6 +943,7 @@ product-lint check [--json]
 product-lint frontier [--json]
 product-lint ship [--json]
 product-lint vocabulary [--staged] [--json]
+product-lint term reject <term-id> <name> --wrong|--taken --because <reason> [--json]
 product-lint knowledge for-file <path> [--json]
 product-lint knowledge affected-by <node-id|term-id> [--json]
 product-lint knowledge slice <set=value,...> [--json]
@@ -886,3 +967,18 @@ beyond exact-name collision is reported for a human, never blocked), no aliases 
 rings (two names for one thing is the defect, not a feature), no suppression lists, no
 governance of prose outside canonical nodes, and no persisted glossary — the `vocabulary`
 command is a view, like every other.
+
+`rejected` looks like it crosses two of those lines and crosses neither. A synonym ring
+makes two names resolve to one term; a rejected name resolves to **nothing**, which is the
+point of writing it down. A suppression list silences a diagnostic; `rejected` creates two.
+The one place the analogy holds is `stance: "taken"`, which does buy silence — and it is
+written by the same person the diagnostic serves, so mislabelling a rejection only costs
+them the guard they wanted. Same trust model as `contested`.
+
+There is also no candidate list, no palette, and no home for vocabulary a statement has not
+used yet. A term node requires a level, an unused word has no statement and therefore no
+falsifier to decide one, and a guessed level is a commitment made before the evidence
+exists — `PL1308` if the guess is too deep, `PL0805` forever if it is too shallow. Seventy
+unplaced words would also take the twenty slots `frontier` prints, burying the terms
+actually in play under the terms nobody uses. A palette belongs in prose, where browsing it
+is the point; the graph holds words that statements speak.
