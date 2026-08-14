@@ -179,10 +179,26 @@ export function renderSummary(input: SummaryInput): string {
 
   if (total > 0) {
     lines.push("");
+    // A row that names a missing node is not a repair to read, it is a node to
+    // write, and the work order for writing it lives somewhere else. Without
+    // this line the summary tells you what is wrong and strands you there.
+    if (input.diagnostics.some(isFrontierObligation)) {
+      lines.push("  product-lint frontier         the work order for the next node to write");
+    }
     lines.push("  product-lint check --full     every finding with its repair");
     if (input.scope) lines.push("  product-lint check --all      include the deferred problems");
   }
   return `${lines.join("\n")}\n`;
+}
+
+/**
+ * A finding whose repair is a node someone has to write, as against a fault to
+ * read and fix in place. These route to `frontier`, which carries the template,
+ * the question, the siblings to read first, and the terms in scope — everything
+ * a summary row deliberately leaves out.
+ */
+function isFrontierObligation(diagnostic: Diagnostic): boolean {
+  return Boolean(diagnostic.frontier) || diagnostic.action === "ask-user";
 }
 
 /**
@@ -395,6 +411,13 @@ export function renderBrief(input: SummaryInput): string {
     );
   }
   if (rest.length > 0) lines.push("", `  ${rest.join(" · ")}`);
-  if (lines.length > 0) lines.push("  product-lint check");
+  if (lines.length > 0) {
+    // Point at the one that answers "so what do I do about the first row".
+    lines.push(
+      input.diagnostics.some(isFrontierObligation)
+        ? "  product-lint frontier   ·   product-lint check"
+        : "  product-lint check",
+    );
+  }
   return lines.length > 0 ? `${lines.join("\n")}\n` : "";
 }

@@ -59,6 +59,25 @@ read, and until now a clean one printed nothing at all.
   a quiet report and a configured-quiet report look identical otherwise.
 - `commit check --staged --full` restores the flat blocks.
 
+**`frontier` hands over one work order, and the surfaces above it route into it.**
+
+It was the last flat dump, and the worst one: `frontier` carries the node template, the
+level's authority question, the siblings to read before writing a duplicate, the terms in
+scope, and four authoring rules — around forty lines per node, because it is meant to be
+handed to whoever writes the node next. Seven obligations was 669 lines, the same wall the
+summary exists to prevent, one level down.
+
+- **One obligation by default**, the shallowest required level, ties broken on the id so two
+  runs agree — a work order that moves between runs cannot be handed to anyone. The count of
+  what is waiting follows it.
+- **`frontier <node-id>`** gives the work order for a specific obligation, which is what a
+  summary row leaves you wanting. **`frontier --full`** gives every one.
+- **`check` and the commit brief print `product-lint frontier`** when any finding is a
+  frontier obligation. A row that names a missing node is not a repair to read, it is a node
+  to write, and without the line the summary says what is wrong and strands you there.
+- Ordering moved out of the CLI into `orderedObligations` / `obligationsFor`, where it is
+  testable and where the rest of the frontier logic already lives.
+
 ## 0.17.0
 
 The harness for product smells, with one smell in it.

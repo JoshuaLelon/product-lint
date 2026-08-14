@@ -974,6 +974,40 @@ not that. `check` and `commit check` pass.
 a node whose statement is no longer the generated one has been written, and only the flag was
 left behind. Without it, `ship` would stay red forever for finished work.
 
+## Which surface says what
+
+Five surfaces, layered by **what you do next with the output** rather than by how much they
+report. Each one answers a different question, and each names the next one down.
+
+| surface | the question it answers | output |
+|---|---|---|
+| `commit check` — refusal | why am I stopped? | errors, grouped by cause |
+| `commit check` — brief | what is next? | 3 rows |
+| `check` | where does the whole graph stand? | ~10 rows |
+| `check --full` | what are all the repairs? | every finding, with its block |
+| `frontier` | write me the next node | one work order |
+
+The layering matters most at the bottom. **`frontier` is not a report, it is a work order**:
+it carries the node template, the level's authority question, the sibling nodes to read
+before writing a duplicate, the terms in scope, and the statement, shape, placement, and
+vocabulary rules. That is around forty lines *per node*, because it is meant to be handed to
+whoever writes the node next.
+
+So it hands over **one** by default — the shallowest-level obligation, ties broken on the id
+so two runs agree — and says how many are waiting. Seven at forty lines each is the same wall
+the summary exists to prevent, one level down.
+
+```bash
+product-lint frontier                  # the next node to write, in full
+product-lint frontier product.core-0   # the work order for a specific one
+product-lint frontier --full           # every obligation
+```
+
+And the surfaces above it route into it: a summary row that names a *missing* node is not a
+repair to read, it is a node to write, so `check` and the commit brief print
+`product-lint frontier` whenever any finding is a frontier obligation. Without that line the
+summary tells you what is wrong and strands you there.
+
 ## The summary
 
 `check` and `ship` print a summary by default. `--full` gives every finding with its repair.

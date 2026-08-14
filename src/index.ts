@@ -1,7 +1,14 @@
 export { loadConfig } from "./config.js";
 export { validateSnapshot } from "./validation.js";
 export { buildKnowledgeGraph, loadCanonicalNodes, ancestorsOf, descendantsOf } from "./graph.js";
-export { detectFrontier, filesForMechanism, governedFiles, placeholderStatement } from "./frontier.js";
+export {
+  detectFrontier,
+  filesForMechanism,
+  governedFiles,
+  obligationsFor,
+  orderedObligations,
+  placeholderStatement,
+} from "./frontier.js";
 export { resolveScope, scopeDiagnostics } from "./scope.js";
 export { adopt, clusterDirectories, slugFor } from "./adopt.js";
 export { SMELLS, detectSmells, smellConfigDiagnostics } from "./smells.js";

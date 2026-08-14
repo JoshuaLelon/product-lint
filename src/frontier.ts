@@ -419,6 +419,35 @@ export function placeholderStatement(level: KnowledgeLevel): string {
 }
 
 /**
+ * Obligations in the order they are worth answering: shallowest required level
+ * first, then by subject so two runs agree.
+ *
+ * The same leverage order the summary uses, and for the same reason — a Context
+ * answer decides what every node beneath it is even for, so writing a Mechanism
+ * before it is work that may not survive. Ties break on the id rather than on
+ * discovery order, because a work order that moves between runs cannot be
+ * handed to anyone.
+ */
+export function orderedObligations(diagnostics: Diagnostic[]): Diagnostic[] {
+  const rank = (item: Diagnostic): number =>
+    item.requiredLevel && item.requiredLevel !== "implementation"
+      ? levelIndex(item.requiredLevel)
+      : KNOWLEDGE_LEVELS.length;
+  return [...diagnostics].sort(
+    (left, right) =>
+      rank(left) - rank(right) ||
+      (left.frontier ?? left.nodeId ?? "").localeCompare(right.frontier ?? right.nodeId ?? ""),
+  );
+}
+
+/** The obligations a `frontier <node-id>` argument selects, empty when it names none. */
+export function obligationsFor(diagnostics: Diagnostic[], nodeId: string): Diagnostic[] {
+  return orderedObligations(diagnostics).filter(
+    (item) => item.frontier === nodeId || item.nodeId === nodeId,
+  );
+}
+
+/**
  * Governed files with no Mechanism owner.
  *
  * One `PL0601` per file is the right shape when the graph can actually own the

@@ -19,7 +19,9 @@ import { isWorkingTreeDirty, stagedChanges } from "./git.js";
 import { affectedByTerm, vocabularyReport } from "./vocabulary.js";
 import { loadTermNodes, recordRejection, serializeTermNode } from "./terms.js";
 import { adopt } from "./adopt.js";
+import { obligationsFor, orderedObligations } from "./frontier.js";
 import { KNOWLEDGE_LEVELS } from "./types.js";
+
 
 function usage(): string {
   return `Product Lint
@@ -28,7 +30,7 @@ Usage:
   product-lint init [--force]
   product-lint validate [--json]
   product-lint check [--all] [--full] [--json]
-  product-lint frontier [--all] [--json]
+  product-lint frontier [<node-id>] [--all] [--full] [--json]
   product-lint ship [--all] [--full] [--json]
   product-lint adopt <path>... | --all [--json]
   product-lint smells [--all] [--json]
@@ -228,7 +230,49 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (["validate", "check", "frontier", "ship"].includes(command)) {
+  if (command === "frontier") {
+    const parsed = parseCommon(rest, true);
+    const config = await loadConfig(process.cwd(), parsed.values.config);
+    const report = await statusReport(config, "frontier", parsed.values.all);
+    if (parsed.values.json) {
+      console.log(
+        stringifyJson({
+          complete: report.complete,
+          ...(report.scope ? { scope: report.scope } : {}),
+          diagnostics: annotateDiagnostics(report.all),
+        }),
+      );
+      applyStatusExitCode(report);
+      return;
+    }
+    const ordered = orderedObligations(report.all);
+    const target = parsed.positionals[0];
+    const selected = target ? obligationsFor(report.all, target) : ordered.slice(0, 1);
+    if (target && selected.length === 0) {
+      throw new Error(`No frontier obligation for ${target}. Run: product-lint frontier --full`);
+    }
+    const shown = parsed.values.full ? ordered : selected;
+    const scope = report.scope ? renderScope(report.scope) : undefined;
+    if (scope) console.log(scope.header);
+    process.stdout.write(formatDiagnostics(shown));
+    // One work order by default. Handing over seven at forty lines each is the
+    // wall the summary exists to prevent, one level down — and the point of this
+    // command is that it is answerable in one sitting.
+    const remaining = ordered.length - shown.length;
+    if (remaining > 0) {
+      console.log(
+        `\n${remaining} more obligation(s) waiting.\n` +
+          `  product-lint frontier <node-id>   the work order for a specific one\n` +
+          `  product-lint frontier --full      every obligation\n` +
+          `  product-lint check                where the whole graph stands`,
+      );
+    }
+    if (scope) console.log(scope.footer);
+    applyStatusExitCode(report);
+    return;
+  }
+
+  if (["validate", "check", "ship"].includes(command)) {
     const parsed = parseCommon(rest);
     const config = await loadConfig(process.cwd(), parsed.values.config);
     if (command === "validate") {
@@ -250,10 +294,7 @@ async function main(): Promise<void> {
           ...(command === "ship" ? { dirty: report.dirty } : {}),
         }),
       );
-    } else if (parsed.values.full || command === "frontier") {
-      // `frontier` is never summarized: its whole job is to hand over the next
-      // node to write, with the template, the question, and the siblings to read
-      // first. A one-line row would delete exactly what it exists to deliver.
+    } else if (parsed.values.full) {
       const scope = report.scope ? renderScope(report.scope) : undefined;
       if (scope) console.log(scope.header);
       process.stdout.write(formatDiagnostics(report.all));
