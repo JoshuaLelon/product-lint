@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.asking-what-a-branch-changed-lists-the-claims"
+  ],
+  "id": "architecture.one-snapshot-type-serves-every-ref",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "One snapshot type serves every ref, so a command that compares two states of the repository reads both the same way.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:8508ecb0b674292ce4a048e17c1dc138f305b0d102a2d50d81cf268479b8d038"
+  }
+}

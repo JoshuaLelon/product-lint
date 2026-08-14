@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.a-check-opens-with-the-highest-leverage-findings"
+  ],
+  "id": "architecture.a-detector-never-formats-its-own-finding",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "A detector returns a finding and never formats it, and one renderer owns how every finding prints.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:8f9695faead4476c3e016cb01de168b93d3156bac7383686b79da0085ab700f2"
+  }
+}

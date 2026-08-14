@@ -1,0 +1,16 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.two-meanings-for-one-name-refuse-the-commit",
+    "behavior.reviewing-the-words-lists-each-unmarked-use",
+    "behavior.a-rejected-name-refuses-the-declaration",
+    "behavior.declaring-a-name-requires-the-names-weighed-against-it"
+  ],
+  "id": "architecture.one-index-resolves-every-marked-word",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "One index resolves every marked word, so a statement and a definition resolve a name alike.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:663463c6178a991b472cc2aca828277a5785f49090cfc5bdf55214e11462edac"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.reading-the-findings-shows-each-standing-mistake"
+  ],
+  "id": "architecture.no-layer-decides-whether-a-statement-is-true",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "No layer decides whether a statement is true; a person records a wrong claim and the tool reads it back.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f2c0eccd06c4ba7da460a550c5071f83a8b9b8d542a22fd3c8f3c160afefe034"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.naming-a-file-lists-its-lineage"
+  ],
+  "id": "architecture.the-graph-layer-owns-lineage",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "The graph layer owns lineage, so no other layer walks parents to answer what governs a file.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:95892388a4f7aa17b4118060b37b050e868abbc0fd705c0fec41f6687460143d"
+  }
+}

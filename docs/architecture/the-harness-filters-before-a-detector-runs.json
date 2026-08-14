@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.asking-for-the-shape-names-each-uneven-place"
+  ],
+  "id": "architecture.the-harness-filters-before-a-detector-runs",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "The shape harness removes drafts and deferred nodes before a detector runs, so no detector carries that rule.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:6fe3db52268cec7da236ce3da78b7f13b78c56d5759e6c947a788f93b28d7712"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.changing-a-statement-marks-what-rests-on-it"
+  ],
+  "id": "architecture.every-digest-is-derived-and-compared",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "Every digest is derived from its inputs and compared, never trusted as the file wrote it.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:1303be2dfdb3a8f66496bf7f3b275adcae481ee8f89b6b50eec5eb115c5e0713"
+  }
+}

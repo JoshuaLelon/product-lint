@@ -1,6 +1,6 @@
 {
   "constrainedBy": [
-    "architecture.draft-src"
+    "architecture.only-the-deepest-level-binds-to-files"
   ],
   "draft": true,
   "id": "mechanism.draft-src",
@@ -14,6 +14,6 @@
   "schemaVersion": 1,
   "statement": "TODO: What concrete implementation mechanism realizes this architecture?",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:56f94d88354887417373dbf6f38d66a1c2acea56dfd472238ded5807657f8362"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:b23b1d49d80969839b865b7ea118da728f277e836fef431c75bfd6a73a397554"
   }
 }

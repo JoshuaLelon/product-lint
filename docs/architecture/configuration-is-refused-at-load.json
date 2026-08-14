@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.a-reasonless-deferral-refuses-the-configuration"
+  ],
+  "id": "architecture.configuration-is-refused-at-load",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "Configuration is refused at load when a deferral carries no reason, so no later layer has to check.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:c910e958eeaa94be8331444f04eef27f64625eef15ebcc3ae263586d6ff3a77a"
+  }
+}

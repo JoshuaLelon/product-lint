@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.a-request-for-a-node-carries-the-level-and-the-words"
+  ],
+  "id": "architecture.one-table-owns-every-repair-and-rule",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "One table owns every repair, question, and authoring rule, so a diagnostic carries them without writing them.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:de6a82069053f7ecd566ac300574c1a4da8961e2b2b9d674abf3cd97d3e9ca1a"
+  }
+}

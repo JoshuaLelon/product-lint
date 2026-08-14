@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.an-unowned-file-refuses-the-commit",
+    "behavior.two-owners-for-one-file-refuse-the-commit"
+  ],
+  "id": "architecture.only-the-deepest-level-binds-to-files",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "Only the deepest level binds to files, so file ownership has exactly one place to be resolved.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:3a9093d47415f2ea0d26e85b363c243ea40479024de14d47dff63904ba8e056f"
+  }
+}

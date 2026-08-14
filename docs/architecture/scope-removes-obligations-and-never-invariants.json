@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.an-owed-node-does-not-refuse-the-commit",
+    "behavior.a-deferral-counts-what-it-silenced"
+  ],
+  "id": "architecture.scope-removes-obligations-and-never-invariants",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "Scope removes obligations from a report and never removes an invariant.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:26a5f542e4d3f39e05d1115e1da47c3e2fa8b4f1cd27efebd12b656a0f9c8349"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.asking-what-a-branch-changed-lists-the-claims",
+    "behavior.changing-a-statement-marks-what-rests-on-it"
+  ],
+  "id": "architecture.one-classifier-decides-what-a-claim-change-is",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "One classifier decides what counts as a claim changing, and both the commit path and the change report read it.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:a2f53b12330cc23ffbadd25775de0c8d32b124477f3dc7efba3821980f2db4b1"
+  }
+}
