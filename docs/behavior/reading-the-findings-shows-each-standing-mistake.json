@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-recorded-mistake-returns-until-the-claim-changes"
+  ],
+  "id": "behavior.reading-the-findings-shows-each-standing-mistake",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer reads the findings, the system shows each recorded mistake whose claim has not changed since.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:841902e0f48481d3551f479a7dd0d57fd8583ea5b1b57fc62984e75612426fd3"
+  }
+}

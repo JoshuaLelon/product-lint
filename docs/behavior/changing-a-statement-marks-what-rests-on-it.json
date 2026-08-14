@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-claim-goes-stale-when-what-it-rests-on-changes"
+  ],
+  "id": "behavior.changing-a-statement-marks-what-rests-on-it",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer changes a statement, the system marks every claim beneath it stale and names the command that repairs them.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:10fea793212acccd7548056eb71391ff3d454cb6a0f97a31873e04db75abf12f"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-report-opens-with-what-is-worth-doing-first"
+  ],
+  "id": "behavior.a-check-opens-with-the-highest-leverage-findings",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer runs a check, the system opens with the highest-leverage findings and names how many it held back.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:95c4ea76ee9a3d942cd2bffac1926a829c53862c5df1cb242bf66915e3924fe2"
+  }
+}

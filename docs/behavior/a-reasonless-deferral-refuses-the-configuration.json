@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-problem-can-be-deferred-with-a-reason"
+  ],
+  "id": "behavior.a-reasonless-deferral-refuses-the-configuration",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer defers a problem without a recorded reason, the system refuses to load the configuration.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:aa25eb898584aaade065f632c74beb29b7c3067e4626ec194bf152a317dc892d"
+  }
+}

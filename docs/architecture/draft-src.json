@@ -1,6 +1,6 @@
 {
   "constrainedBy": [
-    "behavior.draft-src"
+    "behavior.an-unowned-file-refuses-the-commit"
   ],
   "draft": true,
   "id": "architecture.draft-src",
@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "TODO: What responsibility, boundary, or ownership model is required to support this behavior?",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:eeafbc2ffefae00bb9d69aa71249119c16836bac93185de188875ae5e374bb13"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:6dbba32c723d78d7797a9c5f8673828c7e23ad052637ae5d128e5802a2b8665b"
   }
 }

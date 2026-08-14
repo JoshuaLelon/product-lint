@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.one-name-has-one-meaning"
+  ],
+  "id": "behavior.two-meanings-for-one-name-refuse-the-commit",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When two nodes define one name, the system refuses the commit and names both.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:d5d2f963ba9740d7f52e8b491f559937621abbdb3c0c89de0c5ebf9422e9d15b"
+  }
+}

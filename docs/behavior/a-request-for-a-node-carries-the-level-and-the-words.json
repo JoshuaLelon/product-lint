@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.the-existing-decisions-are-shown-before-another-is-added"
+  ],
+  "id": "behavior.a-request-for-a-node-carries-the-level-and-the-words",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When the system asks an engineer for a new node, it shows the nodes already at that level and the words already defined.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f61e20aef0f1106a45d6f62550663029fceb36085092092315dbb7462c00f8d6"
+  }
+}

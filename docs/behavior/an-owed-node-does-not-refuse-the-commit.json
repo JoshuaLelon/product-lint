@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.an-incomplete-graph-does-not-block-work"
+  ],
+  "id": "behavior.an-owed-node-does-not-refuse-the-commit",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer commits with nodes still owed, the system passes the commit and counts what is owed.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:fa3d462c154487aab56d118be7e9885bc8d6a0caeeee7ea33de80a919c30ff11"
+  }
+}

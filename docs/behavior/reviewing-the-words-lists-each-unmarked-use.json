@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-defined-word-used-as-prose-is-reported"
+  ],
+  "id": "behavior.reviewing-the-words-lists-each-unmarked-use",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer reviews the words, the system lists each statement that uses a defined word as ordinary prose.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:4f795761ce2a441ac4368d049a263bd775c769f5883bbbe6f0ef0b99d0c52ab6"
+  }
+}

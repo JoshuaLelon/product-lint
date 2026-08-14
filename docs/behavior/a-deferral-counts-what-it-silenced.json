@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-problem-can-be-deferred-with-a-reason"
+  ],
+  "id": "behavior.a-deferral-counts-what-it-silenced",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer defers a problem, the system counts the findings it stopped reporting.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:aa25eb898584aaade065f632c74beb29b7c3067e4626ec194bf152a317dc892d"
+  }
+}

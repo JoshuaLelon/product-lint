@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.the-shape-of-the-recorded-decisions-is-reported"
+  ],
+  "id": "behavior.asking-for-the-shape-names-each-uneven-place",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer asks for the shape, the system names each uneven place and says what would make it correct.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:3ca20e62570cae24d39770e337759dbfca53094dc7bdde64412a288da1086398"
+  }
+}

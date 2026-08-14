@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-name-keeps-the-names-it-beat"
+  ],
+  "id": "behavior.declaring-a-name-requires-the-names-weighed-against-it",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer declares a name, the system requires the names they weighed against it, and accepts an empty list.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:a4bb48f616376adb5725f6510de4908196b41b29d27deb577e0b64871de11405"
+  }
+}

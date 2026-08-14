@@ -1,12 +1,12 @@
 {
+  "$schema": "../../schema/canonical-node.schema.json",
   "constrainedBy": [
     "product.every-governed-file-has-one-owner"
   ],
-  "draft": true,
-  "id": "behavior.draft-test",
+  "id": "behavior.an-unowned-file-refuses-the-commit",
   "level": "behavior",
   "schemaVersion": 1,
-  "statement": "TODO: What must a user, client, or system observe or do, and on what occasion, because this product rule holds?",
+  "statement": "When an engineer stages a change to a file that no node owns, the system refuses the commit and names the file.",
   "sync": {
     "constraintsDigest": "sha256:product-lint-constraints-v1:bd08eec17cf10c0ec237420e0fdad7ac14662cc7caef932075372160821dabde"
   }

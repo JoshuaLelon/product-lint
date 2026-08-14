@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "product.a-change-names-the-claims-it-made"
+  ],
+  "id": "behavior.asking-what-a-branch-changed-lists-the-claims",
+  "level": "behavior",
+  "schemaVersion": 1,
+  "statement": "When an engineer asks what a branch changed, the system lists the claims it added, withdrew, and restated.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:084b478b8665e6e83cc9e5676b533274d8e263cdbdcbfbc8e25662076c9b5b80"
+  }
+}
