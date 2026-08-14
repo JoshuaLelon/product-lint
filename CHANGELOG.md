@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.14.0
+
+Vocabulary may be declared at every level. Terms began at product on one argument —
+context describes the member's world before the product exists, in the world's words, so
+a coined noun cannot appear in a statement that stays true if you build nothing. That
+argument is about where a word may be *spoken*, and `PL1308` already enforces exactly it.
+Stating it a second time as a list of permitted levels got a real case wrong: a context
+level of thirty-four problems, ten of them instances of two ideas, could either name those
+ideas ten times in unenforced English or declare them at product, where no context
+statement can reach them.
+
+- **`TERM_LEVELS` is deleted, not widened.** A term's level is a `KnowledgeLevel`, the same
+  list a node's level reads. A second list that has come to hold the same six values is
+  two names for one thing, and the next reader has to prove they still agree.
+- **Audience is in too**, deliberately. The argument for context — the level list was
+  `PL1308`'s rule restated in the wrong place — does not stop at context. The concrete
+  worry, that a level of a few one-line glosses may have no statement that needs a coined
+  word, is a claim about one graph, and the tool already answers it per graph: `PL0805
+  TERM_UNUSED_AT_ITS_LEVEL` names a term declared where nothing at that level marks it.
+  A report beats an enum here, and it is the report that is load-bearing.
+- **Where a word may be spoken did not move.** `PL1308 TERM_FROM_BELOW` is unchanged: a
+  product term marked in a context statement is still an error. Widening where a name may
+  be coined made that case reachable instead of impossible, so it is now held by a test
+  rather than by arithmetic.
+- **`PL1309 TERM_LEVEL_FORBIDDEN` is removed.** It refused the declaration levels this
+  release allows and can no longer fire. A diagnostic that cannot fire documents a rule
+  the tool does not have.
+- Nothing else needed widening: term discovery, level ordering, the digests, and the
+  report each already read the level list rather than the four names. `docs/context/terms/`
+  and `docs/audience/terms/` load, `knowledge sync --staged` maintains `vocabularyDigest`
+  on a context node exactly as on a product node, `PL0801`'s walk starts at the term's own
+  level wherever that is, and `product-lint vocabulary` counts every level.
+- **Fixed**: `schema/canonical-node.schema.json` forbade `sync.vocabularyDigest` under
+  `additionalProperties: false`, a field 0.12.0 began writing — so any editor honouring
+  `$schema` flagged every node that marks a term. `validate` always accepted it; only the
+  published schema was wrong.
+
+`schemaVersion` stays `1`: no node shape changed, one field's value domain widened, so
+existing graphs are valid unchanged with no migration step. 0.13.0 and earlier reject a
+graph that declares a term at audience or context — update the pinned copy before
+authoring one.
+
 ## 0.13.0
 
 Deletions leave a record shaped like a deletion. A node could leave the graph without a

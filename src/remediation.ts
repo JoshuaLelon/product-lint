@@ -117,8 +117,6 @@ const FIXES: Record<string, string> = {
     "Create docs/<level>/terms/<slug>.json at the shallowest level whose statements need the word, then run product-lint knowledge sync --staged. If the word is ordinary English here, remove the marks instead.",
   "PL1308 TERM_FROM_BELOW":
     "Decide which is wrong. If the statement leaks a deeper word, rewrite it in this level's vocabulary — the promise, not the surface or model that keeps it. If the term is declared too deep, move its file up a level — but only if the definition survives that level's falsifier: a product term dies when you promise something else, not when a surface or the internal model changes.",
-  "PL1309 TERM_LEVEL_FORBIDDEN":
-    "Move the term file to docs/<level>/terms/ under product or deeper. Audience and context speak the world's words: a coined noun cannot appear in a statement that stays true if you build nothing.",
   "PL1310 TERM_CYCLE":
     "Break the cycle. Remove a marked term from one definition named in the message, and say the thing in plain words there instead.",
   "PL1311 MALFORMED_TERM_MARK":
@@ -347,7 +345,7 @@ export const VOCABULARY_RULE = [
   "If a defined word appears in your sentence with its defined meaning, mark it: *word*.",
   "One thing has one name. Read the terms in scope before you coin a word; if one already names this thing, use it.",
   "One name has one thing. Do not use a marked word in a second sense — coin a different name. A two-word name is a good name.",
-  "Declare a term at the shallowest level whose statements need it: docs/<level>/terms/<slug>.json. Audience and context declare none.",
+  "Declare a term at the shallowest level whose statements need it: docs/<level>/terms/<slug>.json. Every level may declare, so a name for something in the member's world belongs at context, not at product.",
   "Define the thing, not the promise. Say what kind of thing it is and what tells it from its neighbours; the laws about it stay in the nodes that state them.",
   "A statement may use terms of its own level and above, never below. If you need a deeper word, you are stating a deeper thing.",
 ].join("\n");

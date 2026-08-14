@@ -769,8 +769,13 @@ declaration, globally (`PL1304 DUPLICATE_TERM_NAME` — one word cannot carry tw
 the repair is a two-word rename: *day plan*, *retain plan*). And vocabulary flows down
 only (`PL1308 TERM_FROM_BELOW`): a statement may use terms of its own level and above,
 never below, so a product law written in a surface's or a mechanism's word is named.
-Audience and context declare no terms at all — context describes the world before the
-product exists, in the world's words.
+
+Every level may declare, audience and context included. A term's level is decided the way
+a node's is — by what would falsify it — so a name for something in the member's world is
+declared at context and stays true if you build nothing, while a name for something the
+product promises is declared at product. Declaring wider does not speak wider: `PL1308` is
+unchanged, so a context statement still cannot mark a product term, and a term declared
+where no statement of that level marks it is `PL0805`, a report rather than a refusal.
 
 Definitions join the digest machinery. A node whose statement marks terms carries
 `sync.vocabularyDigest`; changing a definition goes stale everywhere the word is spoken

@@ -37,16 +37,6 @@ export interface CanonicalNode {
   implementation?: MechanismImplementation;
 }
 
-/**
- * The levels a term may be declared at. Audience and context are excluded on
- * the placement rule's own logic: context describes the member's world before
- * the product exists, in the world's words, and a coined noun cannot appear in
- * a statement that must stay true if you build nothing.
- */
-export const TERM_LEVELS = ["product", "behavior", "architecture", "mechanism"] as const;
-
-export type TermLevel = (typeof TERM_LEVELS)[number];
-
 export interface TermSyncState {
   vocabularyDigest: string;
 }
@@ -60,7 +50,18 @@ export interface TermNode {
   $schema?: string;
   schemaVersion?: 1;
   id: string;
-  level: TermLevel;
+  /**
+   * Any level. Terms began at product on one argument — context describes the
+   * member's world in the world's words, so a coined noun cannot appear in a
+   * statement that stays true if you build nothing — but that argument is about
+   * where a word may be SPOKEN, and PL1308 enforces exactly it. A second list
+   * of permitted levels said the same thing worse: it refused a context level
+   * the name for a thing that happens to the member, which survives the context
+   * falsifier precisely because it is not a promise. PL0805 reports a term
+   * declared where nothing at its level marks it, which is the same guard done
+   * per graph instead of per tool.
+   */
+  level: KnowledgeLevel;
   /** The exact surface form as it appears in prose. Spaces and capitals allowed. */
   name: string;
   /** One sentence under STATEMENT_STYLE. May itself mark terms of its level or shallower. */

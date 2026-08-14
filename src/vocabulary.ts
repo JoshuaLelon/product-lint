@@ -60,7 +60,8 @@ function containsSequence(tokens: string[], nameTokens: string[]): boolean {
  *
  * The scan never carries a dictionary: it looks only for declared names, only
  * at the term's level and deeper. A shallower occurrence is ordinary English
- * by construction, because context speaks the world's words.
+ * by construction — a statement above the term cannot mark it and stay valid
+ * (PL1308), so the word there is not a missed mark but a different word.
  */
 export function unmarkedUseDiagnostics(
   nodes: SourceCanonicalNode[],

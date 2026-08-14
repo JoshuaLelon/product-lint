@@ -15,7 +15,7 @@ import { checkCommitMessage, checkStagedCommit } from "./commit.js";
 import { initProject } from "./init.js";
 import { isWorkingTreeDirty, stagedChanges } from "./git.js";
 import { affectedByTerm, vocabularyReport } from "./vocabulary.js";
-import { TERM_LEVELS } from "./types.js";
+import { KNOWLEDGE_LEVELS } from "./types.js";
 
 function usage(): string {
   return `Product Lint
@@ -239,7 +239,7 @@ async function main(): Promise<void> {
       );
       return;
     }
-    const counts = TERM_LEVELS.map(
+    const counts = KNOWLEDGE_LEVELS.map(
       (level) => `${level} ${report.terms.filter((term) => term.level === level).length}`,
     ).join(", ");
     console.log(`terms declared (${report.terms.length}): ${counts}\n`);

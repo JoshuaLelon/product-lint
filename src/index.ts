@@ -60,5 +60,5 @@ export {
   LEVEL_PLACEMENT,
   VOCABULARY_RULE,
 } from "./remediation.js";
-export { KNOWLEDGE_LEVELS, TERM_LEVELS } from "./types.js";
+export { KNOWLEDGE_LEVELS } from "./types.js";
 export type * from "./types.js";

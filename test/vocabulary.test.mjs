@@ -65,7 +65,7 @@ test("the vocabulary rule states both failure modes, and both directions", () =>
   assert.match(VOCABULARY_RULE, /coin a different name/, "homonymy's repair is a rename, not a merge");
   assert.match(VOCABULARY_RULE, /shallowest level whose statements need it/);
   assert.match(VOCABULARY_RULE, /never below/, "vocabulary flows the way knowledge does");
-  assert.match(VOCABULARY_RULE, /Audience and context declare none/);
+  assert.match(VOCABULARY_RULE, /Every level may declare/);
 });
 
 test("the vocabulary rule is not folded into the other three", () => {
@@ -279,28 +279,192 @@ test("one name has one thing, across levels and case", async () => {
   assert.match(annotated.fix, /two-word name/);
 });
 
-test("audience and context declare no terms", async () => {
+// --- Every level declares ---
+//
+// A term may now be coined at any level, context and audience included. The
+// argument that kept them out — a coined noun cannot appear in a statement
+// that stays true if you build nothing — is about where a word may be SPOKEN,
+// and PL1308 is what enforces it. These tests hold the two halves apart:
+// coining widened, speaking did not.
+
+test("a context term is declared, marked at context, and marked deeper", async () => {
   const { root, config } = await createRepository();
-  const file = path.join(root, "docs", "context", "terms", "problem.json");
   await writeTerm(root, {
-    id: "term.problem",
+    id: "term.bloat",
     level: "context",
-    name: "problem",
-    definition: "A problem is what a member brings before the product exists.",
-  }).catch(() => {});
-  // writeTerm derives the folder from level, so write the forbidden file directly.
-  const { mkdir } = await import("node:fs/promises");
-  await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(
-    file,
-    `${JSON.stringify({ schemaVersion: 1, id: "term.problem", level: "context", name: "problem", definition: "x" }, null, 2)}\n`,
-  );
+    name: "bloat",
+    definition: "Bloat is information in front of a member that the member does not want.",
+  });
+  await writeNode(root, {
+    id: "context.review-problem",
+    level: "context",
+    statement: "Video teams lose track of review state under *bloat*.",
+    constrainedBy: ["audience.role.reviewer"],
+    sync: { constraintsDigest: "pending" },
+  });
+  await writeNode(root, {
+    id: "product.current-version",
+    level: "product",
+    statement: "Each shot has one current version, so its history is not *bloat*.",
+    constrainedBy: ["context.review-problem"],
+    sync: { constraintsDigest: "pending" },
+  });
+  await git(root, "add", "docs");
+  const sync = await synchronizeStaged(config);
+  assert.equal(sync.diagnostics.length, 0);
+  await git(root, "add", "docs");
+
   const status = await inspectWorkingTree(config);
-  const forbidden = status.validation.diagnostics.find(
-    (item) => item.code === "PL1309 TERM_LEVEL_FORBIDDEN",
+  assert.equal(status.validation.diagnostics.filter((item) => item.severity === "error").length, 0);
+  assert.equal(status.synchronization.length, 0);
+
+  // The digest is the half most likely to have been written for four levels:
+  // a context node carries vocabulary state exactly as a product node does,
+  // validate reads it back, and a second sync is a no-op.
+  const problem = await readNode(root, "context", "review-problem");
+  const version = await readNode(root, "product", "current-version");
+  assert.match(problem.sync.vocabularyDigest, /^sha256:product-lint-vocabulary-v1:/);
+  assert.equal(
+    version.sync.vocabularyDigest,
+    problem.sync.vocabularyDigest,
+    "both statements speak one word, so both carry one digest",
   );
-  assert.ok(forbidden);
-  assert.match(forbidden.message, /world's words/);
+  const again = await synchronizeStaged(config);
+  assert.deepEqual(again.updatedFiles, []);
+});
+
+test("a product term marked in a context statement is still an error", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.version",
+    level: "product",
+    name: "version",
+    definition: "A version is one uploaded rendition of a shot.",
+  });
+  await writeNode(root, {
+    id: "context.review-problem",
+    level: "context",
+    statement: "Video teams lose track of the current *version*.",
+    constrainedBy: ["audience.role.reviewer"],
+    sync: { constraintsDigest: "pending" },
+  });
+  const status = await inspectWorkingTree(config);
+  const below = status.validation.diagnostics.find((item) => item.code === "PL1308 TERM_FROM_BELOW");
+  assert.ok(below, "the previously impossible case is now reachable, and still refused");
+  assert.equal(below.nodeId, "context.review-problem");
+  assert.match(below.message, /declared at product/);
+});
+
+test("a context term's unmarked uses start at context and skip audience", () => {
+  const nodes = sourced([
+    ...canonicalNodes(),
+    {
+      id: "audience.role.editor",
+      level: "audience",
+      statement: "The product serves people who cut bloat from a timeline.",
+      constrainedBy: [],
+    },
+    {
+      id: "context.stale-lists",
+      level: "context",
+      statement: "A list that no longer describes today is bloat a member reads past.",
+      constrainedBy: ["audience.role.reviewer"],
+    },
+    {
+      id: "product.one-list",
+      level: "product",
+      statement: "A member keeps one list, so a second list is bloat.",
+      constrainedBy: ["context.review-problem"],
+    },
+  ]);
+  const terms = [
+    term({
+      id: "term.bloat",
+      level: "context",
+      name: "bloat",
+      definition: "Bloat is information in front of a member that the member does not want.",
+      sourcePath: "docs/context/terms/bloat.json",
+    }),
+  ];
+  const diagnostics = unmarkedUseDiagnostics(nodes, terms);
+  assert.equal(diagnostics.length, 1);
+  const uses = diagnostics[0].details.uses.map((use) => use.id).sort();
+  // The walk starts at the term's own level, wherever that is. Audience is
+  // shallower and cannot mark it, so the word there is a different word.
+  assert.deepEqual(uses, ["context.stale-lists", "product.one-list"]);
+  assert.match(diagnostics[0].message, /term\.bloat's level or deeper/);
+});
+
+test("one name has one thing, across the widened levels too", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.bloat",
+    level: "context",
+    name: "bloat",
+    definition: "Bloat is information in front of a member that the member does not want.",
+  });
+  await writeTerm(root, {
+    id: "term.feed-bloat",
+    level: "product",
+    name: "Bloat",
+    definition: "Bloat is the share of a feed the product declines to rank.",
+  });
+  const status = await inspectWorkingTree(config);
+  const duplicate = status.validation.diagnostics.find(
+    (item) => item.code === "PL1304 DUPLICATE_TERM_NAME",
+  );
+  assert.ok(duplicate, "one declaration per name did not become one per level");
+  assert.deepEqual(duplicate.details.terms.sort(), ["term.bloat", "term.feed-bloat"]);
+});
+
+test("an audience term is declared and marked like any other", async () => {
+  const { root, config } = await createRepository();
+  await writeTerm(root, {
+    id: "term.shot-reviewer",
+    level: "audience",
+    name: "shot reviewer",
+    definition: "A shot reviewer is a person who decides whether a shot may reach a client.",
+  });
+  await writeNode(root, {
+    id: "audience.role.reviewer",
+    level: "audience",
+    statement: "The product serves a *shot reviewer*.",
+    constrainedBy: [],
+    sync: { constraintsDigest: "pending" },
+  });
+  await git(root, "add", "docs");
+  const sync = await synchronizeStaged(config);
+  assert.equal(sync.diagnostics.length, 0);
+  await git(root, "add", "docs");
+  const status = await inspectWorkingTree(config);
+  assert.equal(status.validation.diagnostics.filter((item) => item.severity === "error").length, 0);
+  const role = await readNode(root, "audience", "role-reviewer");
+  assert.match(role.sync.vocabularyDigest, /^sha256:product-lint-vocabulary-v1:/);
+});
+
+test("an audience term nothing at audience marks is reported, not refused", () => {
+  const nodes = sourced([
+    ...canonicalNodes().filter((node) => node.id !== "product.current-version"),
+    {
+      id: "product.current-version",
+      level: "product",
+      statement: "Each shot a *crew* uploads has one current version.",
+      constrainedBy: ["context.review-problem"],
+    },
+  ]);
+  const crew = term({
+    id: "term.crew",
+    level: "audience",
+    name: "crew",
+    definition: "A crew is the set of people who work one production together.",
+    sourcePath: "docs/audience/terms/crew.json",
+  });
+  const diagnostics = unusedTermDiagnostics(nodes, [crew]);
+  // This is the guard the level list used to be, and it is a better one: it
+  // answers per graph what an enum could only answer per tool.
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0].code, "PL0805 TERM_UNUSED_AT_ITS_LEVEL");
+  assert.match(diagnostics[0].message, /declared at audience/);
 });
 
 test("a malformed mark is an error, not a silent non-mark", async () => {
@@ -463,8 +627,8 @@ test("unmarked uses group by term, skip shallower levels, and skip verb forms", 
   assert.equal(diagnostics.length, 1, "one block per term, the way a long file list folds into a tree");
   const uses = diagnostics[0].details.uses.map((use) => use.id).sort();
   assert.deepEqual(uses, ["behavior.plans-are-kept", "product.approved-plan"]);
-  // Context speaks the world's words; "planned" is a verb cousin; a marked use
-  // is already resolved. None of the three is a candidate.
+  // The context node is above a product term and could not mark it; "planned"
+  // is a verb cousin; a marked use is already resolved. None is a candidate.
   const text = formatDiagnostic(diagnostics[0]);
   assert.match(text, /uses \(2\):/);
   assert.match(text, /Three readings/);

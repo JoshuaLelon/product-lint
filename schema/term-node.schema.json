@@ -13,7 +13,7 @@
       "pattern": "^term\\.[a-z0-9][a-z0-9._-]*$"
     },
     "level": {
-      "enum": ["product", "behavior", "architecture", "mechanism"]
+      "enum": ["audience", "context", "product", "behavior", "architecture", "mechanism"]
     },
     "name": { "type": "string", "minLength": 1 },
     "definition": { "type": "string", "minLength": 1 },

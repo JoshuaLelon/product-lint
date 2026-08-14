@@ -6,11 +6,10 @@ import type {
   ResolvedConfig,
   SourceCanonicalNode,
   SourceTermNode,
-  TermLevel,
   TermNode,
   Vocabulary,
 } from "./types.js";
-import { KNOWLEDGE_LEVELS, TERM_LEVELS } from "./types.js";
+import { KNOWLEDGE_LEVELS } from "./types.js";
 import { digest, stableStringify } from "./stable-json.js";
 import { normalizePath } from "./glob.js";
 
@@ -193,7 +192,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function parseTermNode(
   value: unknown,
   sourcePath: string,
-  folderLevel: TermLevel,
+  folderLevel: KnowledgeLevel,
 ): { node?: SourceTermNode; diagnostics: Diagnostic[] } {
   const diagnostics: Diagnostic[] = [];
   if (!isRecord(value)) {
@@ -237,11 +236,11 @@ function parseTermNode(
     });
   }
 
-  if (!TERM_LEVELS.includes(level as TermLevel)) {
+  if (!KNOWLEDGE_LEVELS.includes(level as KnowledgeLevel)) {
     diagnostics.push({
       code: "PL1301 INVALID_TERM",
       severity: "error",
-      message: `Invalid term level: ${String(value.level)}. A term is declared at product, behavior, architecture, or mechanism.`,
+      message: `Invalid term level: ${String(value.level)}. A term is declared at ${KNOWLEDGE_LEVELS.join(", ")}.`,
       path: sourcePath,
       nodeId: id || undefined,
     });
@@ -296,7 +295,7 @@ function parseTermNode(
       ...(typeof value.$schema === "string" ? { $schema: value.$schema } : {}),
       ...(value.schemaVersion === 1 ? { schemaVersion: 1 as const } : {}),
       id,
-      level: level as TermLevel,
+      level: level as KnowledgeLevel,
       name,
       definition,
       ...(sync ? { sync } : {}),
@@ -327,19 +326,6 @@ export async function loadTermNodes(
     const prefix = `${termRootFor(config, level)}/`;
     const files = snapshot.files.filter((file) => file.startsWith(prefix) && file.endsWith(".json"));
     for (const file of files) {
-      // The forbidden levels are refused per file rather than silently ignored,
-      // because an unread declaration would read as an accepted one.
-      if (!TERM_LEVELS.includes(level as TermLevel)) {
-        diagnostics.push({
-          code: "PL1309 TERM_LEVEL_FORBIDDEN",
-          severity: "error",
-          message: `A term cannot be declared at ${level}. ${
-            level === "audience" ? "Audience" : "Context"
-          } speaks the world's words; terms begin at product.`,
-          path: file,
-        });
-        continue;
-      }
       let parsed: unknown;
       try {
         parsed = JSON.parse(await snapshot.readFile(file)) as unknown;
@@ -352,7 +338,7 @@ export async function loadTermNodes(
         });
         continue;
       }
-      const result = parseTermNode(parsed, file, level as TermLevel);
+      const result = parseTermNode(parsed, file, level);
       diagnostics.push(...result.diagnostics);
       if (result.node) terms.push(result.node);
     }
@@ -431,8 +417,10 @@ function markDiagnostics(
   for (const term of resolved.terms) {
     // Vocabulary flows the way knowledge does: down only. A statement may use
     // terms of its own level and above; a definition, of its own level and
-    // above. Audience and context fail automatically, since every term is
-    // deeper than both.
+    // above. This is the whole of the rule now that every level may declare:
+    // widening where a name may be COINED left where it may be SPOKEN exactly
+    // as it was, so a product term marked in a context statement is still an
+    // error — reachable now rather than impossible, and still refused.
     if (levelIndex(term.level) > levelIndex(site.level)) {
       diagnostics.push({
         code: "PL1308 TERM_FROM_BELOW",
