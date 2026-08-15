@@ -5,7 +5,7 @@
   ],
   "id": "mechanism.the-recorded-mistake",
   "implementation": {
-    "digest": "sha256:product-lint-implementation-v1:0542b398128d2694b647f54617e58af1659ba5881be5725ccc367112afde8917",
+    "digest": "sha256:product-lint-implementation-v1:e36f2773a591d65534fbd6007e523f3ba36d4b7f5de540e9b9311f47390cc706",
     "files": [
       "src/mistakes.ts",
       "src/references.ts",

@@ -13,6 +13,59 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * PL1210: a reference no surface can reach.
+ *
+ * Everywhere else, storage that cannot be read is already refused. A term
+ * nothing marks is PL0804, a term no statement at its level marks is PL0805, a
+ * scope root naming no node is PL1401, an ignore naming an unknown smell is
+ * PL1402. References were the one node type exempt: `relatedNodes` is optional,
+ * PL1204 asks only for a kind and a statement, and a file with neither passes
+ * every check and is then returned by nothing.
+ *
+ * Both readers match on `relatedNodes` — `knowledge for-file` and `affected-by`
+ * intersect it with the node set, and `standingMistakeDiagnostics` filters to
+ * references that have it. So a reference without it is not a weak record or a
+ * badly written one. It is a file that validates, syncs, commits, and has no
+ * path to a reader for the rest of the repository's life.
+ *
+ * An error rather than a warning, on PL1401's standard: the failure is silent
+ * and total, and a warning saying "nothing will ever read this file" is read by
+ * the same person who was not going to read the file.
+ */
+export function unreachableReferenceDiagnostics(
+  references: SourceReferenceNode[],
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  for (const reference of [...references].sort((left, right) => left.id.localeCompare(right.id))) {
+    if ((reference.relatedNodes?.length ?? 0) === 0) {
+      diagnostics.push({
+        code: "PL1210 UNREACHABLE_REFERENCE",
+        severity: "error",
+        message: `${reference.id} names no relatedNodes, so no surface returns it: knowledge for-file and affected-by both match on relatedNodes, and a mistake without them never reaches PL0920.`,
+        nodeId: reference.id,
+        path: reference.sourcePath,
+        action: "edit-node",
+      });
+      continue;
+    }
+    // A mistake is reported only while the node has not changed SINCE the
+    // commit that recorded it, so without that commit there is nothing to
+    // measure "since" against and the reference silently drops out.
+    if (reference.kind === "mistake" && !reference.evidence?.commit) {
+      diagnostics.push({
+        code: "PL1210 UNREACHABLE_REFERENCE",
+        severity: "error",
+        message: `${reference.id} records a mistake with no evidence.commit, so PL0920 can never tell whether the claim changed since it was learned.`,
+        nodeId: reference.id,
+        path: reference.sourcePath,
+        action: "edit-node",
+      });
+    }
+  }
+  return diagnostics;
+}
+
 export async function loadReferences(
   config: ResolvedConfig,
   snapshot: RepositorySnapshot,
@@ -155,6 +208,8 @@ export async function loadReferences(
       sourcePath: file,
     });
   }
+
+  diagnostics.push(...unreachableReferenceDiagnostics(references));
 
   return { references, diagnostics };
 }

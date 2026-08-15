@@ -1276,7 +1276,22 @@ file they both match, or there is no evidence.
 ## Reference JSON
 
 `docs/reference/*.json` stores non-canonical institutional memory. References do not
-participate in downward propagation. Evidence can be anchored to an immutable commit:
+participate in downward propagation. Evidence can be anchored to an immutable commit.
+
+**A reference must be able to reach a reader.** `PL1210 UNREACHABLE_REFERENCE` refuses one
+that names no `relatedNodes`, and a `kind: "mistake"` that carries no `evidence.commit`.
+Both readers match on `relatedNodes` — `knowledge for-file` and `affected-by` intersect it
+with the node set, and `PL0920` filters to references that have it — so a reference without
+it validates, syncs, commits, and is returned by nothing for the rest of the repository's
+life. A mistake without a commit has nothing to measure *since* against, which is the whole
+of `PL0920`'s test.
+
+That is the rule every other stored thing here already obeys: `PL0804` for a term nothing
+marks, `PL0805` for one no statement at its level marks, `PL1401` for a scope root naming no
+node, `PL1402` for an ignore naming a smell that does not exist. References were the one
+node type where storage with no consumer was legal. It is an error rather than a warning on
+`PL1401`'s standard — the failure is silent and total, and a warning that says "nothing will
+ever read this file" is read by the same person who was not going to read the file.
 
 ```json
 {

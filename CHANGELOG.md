@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.21.0
+
+**`PL1210 UNREACHABLE_REFERENCE` refuses a reference no surface can reach.**
+
+Everywhere else, storage that cannot be read is already refused: `PL0804` for a term nothing
+marks, `PL0805` for one no statement at its level marks, `PL1401` for a scope root naming no
+node, `PL1402` for an ignore naming a smell that does not exist. References were the one node
+type exempt. `relatedNodes` is optional, `PL1204` asks only for a kind and a statement, and a
+file with neither passed every check.
+
+Both readers match on `relatedNodes`. `knowledge for-file` and `affected-by` intersect it
+with the node set, and `standingMistakeDiagnostics` filters to references that carry it. So a
+reference without it is not a weak record — it is a file that validates, syncs, commits, and
+is returned by nothing for the rest of the repository's life. A `kind: "mistake"` with no
+`evidence.commit` is the same failure by another route: `PL0920` reports a mistake only while
+its node has not changed *since* the commit that recorded it, and with no commit there is
+nothing to measure since.
+
+An error rather than a warning, on `PL1401`'s standard: the failure is silent and total, and
+a warning saying "nothing will ever read this file" is read by the same person who was not
+going to read the file.
+
+Found by proposing to write eight of them. Backfilling this repository's recorded mistakes
+out of its own commit messages would have produced files that validated and were never read
+again — and the tool would have said nothing, which is what made the proposal look cheap.
+
 ## 0.20.0
 
 Found by dogfooding: Product Lint adopted into Product Lint.

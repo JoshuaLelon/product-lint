@@ -5,7 +5,7 @@
   ],
   "id": "mechanism.the-remediation-table",
   "implementation": {
-    "digest": "sha256:product-lint-implementation-v1:9d864d028f1477a5df0a250461af0e9cb24dc4f788228cda59de4a3ef08cb0e7",
+    "digest": "sha256:product-lint-implementation-v1:a52775493698c2b1a51033411e9f736788abe76052dea31f3cb848e52f74ef52",
     "files": [
       "src/remediation.ts",
       "test/remediation.test.mjs"

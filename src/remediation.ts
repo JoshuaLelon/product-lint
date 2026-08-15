@@ -103,6 +103,8 @@ const FIXES: Record<string, string> = {
   // Terms
   "PL1301 INVALID_TERM":
     'Replace the file contents with a single JSON object holding $schema, schemaVersion, id, level, name, definition, rejected, and optionally borrowed and sync. rejected is a list of {name, stance, because}, stance being wrong or taken; write "rejected": [] to say no other name was weighed.',
+  "PL1210 UNREACHABLE_REFERENCE":
+    "Name the nodes this is about in relatedNodes, and for a mistake give evidence.commit as well — that is what every reader matches on. If it is about no node in particular, it is a note rather than a reference, and a note nothing returns belongs in the commit message that already explains it.",
   "PL1302 INVALID_TERM_ID":
     'Rewrite the id as "term." followed by lowercase words joined by hyphens, for example "term.retain-plan".',
   "PL1303 DUPLICATE_TERM_ID":
