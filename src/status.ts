@@ -12,6 +12,7 @@ import { detectFrontier } from "./frontier.js";
 import { resolveScope, scopeDiagnostics } from "./scope.js";
 import { detectSmells, smellConfigDiagnostics, type SmellReport } from "./smells.js";
 import { standingMistakeDiagnostics } from "./mistakes.js";
+import { vocabularyReport } from "./vocabulary.js";
 
 export interface ProductStatus {
   validation: ValidationResult;
@@ -21,6 +22,17 @@ export interface ProductStatus {
   smells: SmellReport;
   /** Recorded mistakes whose node has not changed since. Review, never a gate. */
   mistakes: Diagnostic[];
+  /**
+   * How many findings `product-lint vocabulary` is holding.
+   *
+   * A count rather than the findings themselves, because the whole PL08xx family
+   * was reachable ONLY by typing the command, and nothing anywhere told a reader
+   * to type it — the same state PL0920 was built to rescue references from.
+   * Folding them into the rows would not have fixed it: they are info, the rows
+   * sort by severity first, so on any graph with real work outstanding they land
+   * under "and N more" and stay invisible. A footer always prints.
+   */
+  wordFindings: number;
 }
 
 export async function inspectWorkingTree(
@@ -50,6 +62,7 @@ export async function inspectSnapshot(
       frontier: { complete: false, diagnostics: [] },
       smells: { diagnostics: [], deferred: 0, ignored: [] },
       mistakes: [],
+      wordFindings: 0,
     };
   }
 
@@ -76,5 +89,7 @@ export async function inspectSnapshot(
     mistakes: (
       await standingMistakeDiagnostics(config, validation.graph, validation.references, scope)
     ).diagnostics,
+    wordFindings: vocabularyReport([...validation.graph.nodes.values()], validation.terms)
+      .diagnostics.length,
   };
 }

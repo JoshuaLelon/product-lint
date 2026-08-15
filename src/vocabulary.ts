@@ -153,6 +153,108 @@ export function rejectedNameUseDiagnostics(
 }
 
 /**
+ * A determiner is a free noun detector. "the claim" is a noun in that sentence;
+ * "reads" and "changed" never follow one. No part-of-speech tagger, no
+ * dictionary, no model call — one pass, and the recall it gives up ("engineers
+ * cannot find claims" contributes nothing) is the same trade PL0801 already
+ * makes for the same reason.
+ */
+const DETERMINERS = new Set([
+  "a", "an", "the", "every", "each", "its", "their", "this", "that", "no", "one", "two",
+]);
+
+/** The most-shared undeclared nouns shown at once. A display cap, like LEVEL_SAMPLE_LIMIT. */
+const SHARED_NOUN_LIMIT = 5;
+/** Uses printed per finding. You act on the word and its spread, not on the sentences. */
+const SHARED_NOUN_USES = 3;
+
+/**
+ * PL0807: the nouns this graph keeps returning to that no term defines.
+ *
+ * The other reports here need something to already exist — a declared term for
+ * PL0801, two for PL0802, a mid-sentence-capital habit for PL0803 — so a graph
+ * written from scratch gets zero signal from all three, forever. "Zero declared
+ * terms, zero noise" is the right property and it also means the feature never
+ * starts.
+ *
+ * RANKED, NOT THRESHOLDED, and that is the whole design. A threshold asserts
+ * "these ARE candidates", which is a judgement needing calibration against
+ * graphs nobody has yet. A rank asserts "these are the most shared, look at
+ * them", which needs none. The floor below is not a tuned number either: a word
+ * in one statement at one level is not shared vocabulary under any reading.
+ *
+ * Breadth, not frequency. Frequency put "system" (29 uses, two levels) at the
+ * top of the first draft of this and "module" and "implement" just under it —
+ * one level each, boilerplate of the deepest layer. A word carrying meaning DOWN
+ * the graph is what a term is.
+ *
+ * It does not find synonyms; a context-window test for those was tried against
+ * a real corpus and returned noise. What it does is start the chain that finds
+ * them: declare the word, and PL0801 hands you every unmarked use to read.
+ * Reading those is where a second word for the same thing shows itself.
+ *
+ * SELF-QUIETING: a declared name leaves this report, so acting on a finding
+ * removes it. That is the property PL0804 does not have, and the reason this one
+ * is safe to print on a review surface.
+ */
+export function sharedNounDiagnostics(
+  nodes: SourceCanonicalNode[],
+  terms: SourceTermNode[],
+): Diagnostic[] {
+  const vocabulary = buildVocabulary(terms);
+  const found = new Map<string, { levels: Set<string>; uses: { id: string; statement: string }[] }>();
+
+  for (const node of nodes) {
+    // A marked span is a declared-term use and PL0801's business; a quoted span
+    // is a screen's own word.
+    const words = tokenize(withoutQuoted(withoutMarks(node.statement)));
+    const local = new Set<string>();
+    for (let index = 1; index < words.length; index += 1) {
+      const word = words[index]!;
+      if (!DETERMINERS.has(words[index - 1]!)) continue;
+      if (STOPWORDS.has(word) || word.length < 3) continue;
+      // The same crude singularization markCandidates uses, so "claims" and
+      // "claim" are one word here exactly as they are to a mark.
+      local.add(word.endsWith("s") && !word.endsWith("ss") ? word.slice(0, -1) : word);
+    }
+    for (const word of local) {
+      // A word a term already declares belongs to PL0801 when it is unmarked and
+      // to nothing when it is marked. Three states, three reports, no overlap.
+      if (resolveMark(word, vocabulary)) continue;
+      const entry = found.get(word) ?? { levels: new Set<string>(), uses: [] };
+      entry.levels.add(node.level);
+      entry.uses.push({ id: node.id, statement: node.statement });
+      found.set(word, entry);
+    }
+  }
+
+  return [...found.entries()]
+    // Shared at all, which is the definition rather than a threshold.
+    .filter(([, entry]) => entry.levels.size >= 2 && entry.uses.length >= 2)
+    .sort(
+      ([leftWord, left], [rightWord, right]) =>
+        right.levels.size - left.levels.size ||
+        right.uses.length - left.uses.length ||
+        leftWord.localeCompare(rightWord),
+    )
+    .slice(0, SHARED_NOUN_LIMIT)
+    .map(([word, entry]) => ({
+      code: "PL0807 SHARED_UNDECLARED_NOUN",
+      severity: "info" as const,
+      message: `"${word}" is used as a noun in ${entry.uses.length} statement(s) across ${entry.levels.size} level(s), and no term declares it.`,
+      action: "inspect" as const,
+      details: {
+        word,
+        levels: [...entry.levels],
+        total: entry.uses.length,
+        // Capped, unlike PL0801's list. There you must read each sentence to
+        // choose between three readings; here you act on the word.
+        uses: entry.uses.slice(0, SHARED_NOUN_USES),
+      },
+    }));
+}
+
+/**
  * Small and versioned on purpose: this list is part of the deterministic
  * contract, not a linguistics opinion. Changing it changes which pairs report,
  * so it changes only deliberately.
@@ -355,6 +457,7 @@ export function vocabularyReport(
       diagnostics: [
         ...unmarkedUseDiagnostics(nodes, terms),
         ...rejectedNameUseDiagnostics(nodes, terms),
+        ...sharedNounDiagnostics(nodes, terms),
         ...synonymCandidateDiagnostics(terms),
         ...capitalizedUndeclaredDiagnostics(nodes, vocabulary),
         ...unusedTermDiagnostics(nodes, terms),
@@ -374,6 +477,9 @@ export function vocabularyReport(
       ...unmarkedUseDiagnostics(changedNodes, unchangedTerms),
       ...rejectedNameUseDiagnostics(nodes, changedTerms),
       ...rejectedNameUseDiagnostics(changedNodes, unchangedTerms),
+      // Scoped to the statements in the diff, like PL0801: the standing backlog
+      // stays in the full report.
+      ...sharedNounDiagnostics(changedNodes, terms),
       ...synonymCandidateDiagnostics(terms).filter((item) => {
         const pair = item.details?.terms as { id: string }[] | undefined;
         return pair?.some((entry) => changedTerms.some((term) => term.id === entry.id)) ?? false;

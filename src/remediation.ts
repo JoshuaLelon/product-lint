@@ -206,6 +206,8 @@ const FIXES: Record<string, string> = {
     "smells.ignore names a smell this version does not detect, so it silences nothing. Correct the name, or remove the entry.",
   "PL1401 UNKNOWN_SCOPE_ROOT":
     "scope.roots names a node that does not exist, which scopes the graph to nothing reachable and quiets the whole report. Correct the id, or remove the entry.",
+  "PL0807 SHARED_UNDECLARED_NOUN":
+    "If this names one thing the graph keeps returning to, declare it at the shallowest level whose statements need it, then mark the uses. PL0801 will list every one of them, and reading that list is where a second word for the same thing shows itself. If it is ordinary English, leave it — this is a ranked review of the most-shared nouns, not a list of defects, so the last entries are expected to be nothing.",
   "PL0806 REJECTED_NAME_IN_PROSE":
     "If the sentence means the term, use the term's name and mark it. If it means a second thing, that thing needs a name of its own — a rejection standing in the way says you decided so once already. If the word is ordinary English here, leave it: this report is a review, not a gate.",
   "PL1312 REJECTED_TERM_NAME":

@@ -5,7 +5,7 @@
   ],
   "id": "mechanism.the-entry-points",
   "implementation": {
-    "digest": "sha256:product-lint-implementation-v1:d3ba06145da5ed2ae99f4d28db78db0eb66e412f1117839ac2ae231b72b2c9eb",
+    "digest": "sha256:product-lint-implementation-v1:93fce40d72bcbdc0d43d31d961a16d5b1eaeee63c6236cf67a36fe6edc9d75b0",
     "files": [
       "src/cli.ts",
       "src/index.ts"

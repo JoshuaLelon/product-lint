@@ -99,6 +99,8 @@ interface StatusReport {
   scope?: ScopeSummary;
   graph?: KnowledgeGraph;
   ignored: { smell: string; nodeId?: string; because: string }[];
+  /** How many findings `product-lint vocabulary` holds, so the footer can name it. */
+  wordFindings: number;
   /** Everything the command reports, in the order it reports it. */
   all: Diagnostic[];
   /** The subset that decides exit code 1, as against an incomplete frontier. */
@@ -142,6 +144,7 @@ async function statusReport(
     ...(status.frontier.scope ? { scope: status.frontier.scope } : {}),
     ...(status.validation.graph ? { graph: status.validation.graph } : {}),
     ignored: status.smells.ignored,
+    wordFindings: status.wordFindings,
     all:
       command === "frontier"
         ? frontier
@@ -311,6 +314,7 @@ async function main(): Promise<void> {
           ...(report.graph ? { graph: report.graph } : {}),
           ...(report.scope ? { scope: report.scope } : {}),
           ignored: report.ignored,
+          wordFindings: report.wordFindings,
         }),
       );
     }
@@ -673,6 +677,7 @@ async function main(): Promise<void> {
             ...(status.validation.graph ? { graph: status.validation.graph } : {}),
             ...(status.frontier.scope ? { scope: status.frontier.scope } : {}),
             ignored: status.smells.ignored,
+            wordFindings: status.wordFindings,
           }),
         );
       }

@@ -5,7 +5,7 @@
   ],
   "id": "mechanism.the-report-summary",
   "implementation": {
-    "digest": "sha256:product-lint-implementation-v1:a929ce7edb75bbc12a1b085616711b07e841df2ba9a2ea1243d56bc9490b3d52",
+    "digest": "sha256:product-lint-implementation-v1:3ef0c732b4e00fad652365ea462728b18e2b663bd517f60eb17f0008c41a6a83",
     "files": [
       "src/summary.ts",
       "src/status.ts",

@@ -26,8 +26,11 @@ import {
   recordRejection,
   rejectedNameDiagnostics,
   rejectedNameUseDiagnostics,
+  renderBrief,
   renderFileKnowledgeForLlm,
+  renderSummary,
   resolveMark,
+  sharedNounDiagnostics,
   semanticTermFingerprint,
   serializeTermNode,
   termFingerprint,
@@ -1255,4 +1258,92 @@ test("the invalid-term repair names every required field", () => {
   });
   assert.match(diagnostic.fix, /rejected/, "a repair that omits a required field is a wrong repair");
   assert.match(diagnostic.fix, /wrong or taken/);
+});
+
+// --- The most-shared nouns nothing defines ---
+//
+// Every other report here needs something to already exist: a declared term for
+// PL0801, two for PL0802, a mid-sentence-capital habit for PL0803. A graph
+// written from scratch gets zero signal from all three, forever.
+
+function statement(id, level, text) {
+  return { id, level, statement: text, constrainedBy: [], sourcePath: `docs/${level}/${id}.json` };
+}
+
+test("the report ranks by breadth, because frequency ranks the boilerplate", () => {
+  const nodes = [
+    statement("context.one", "context", "An engineer cannot find the claim that governs the code."),
+    statement("product.one", "product", "The system marks a claim stale when the claim changes."),
+    statement("behavior.one", "behavior", "When an engineer reads a claim, the system names it."),
+    // Deep-layer boilerplate: many uses, one level. Frequency would rank this
+    // first; breadth puts it last, because a word carrying meaning DOWN the
+    // graph is what a term is.
+    statement("mechanism.one", "mechanism", "The module implements the module registry."),
+    statement("mechanism.two", "mechanism", "The module owns the module list."),
+    statement("mechanism.three", "mechanism", "The module holds the module index."),
+  ];
+  const found = sharedNounDiagnostics(nodes, []);
+  assert.equal(found[0].details.word, "claim");
+  assert.equal(found[0].details.levels.length, 3);
+  assert.ok(found.every((item) => item.severity === "info"));
+});
+
+test("a determiner is the noun test, and one level is not shared", () => {
+  const nodes = [
+    statement("context.one", "context", "An engineer changes the code, and the code changes again."),
+    statement("product.one", "product", "The system changes the code when an engineer changes it."),
+  ];
+  const words = sharedNounDiagnostics(nodes, []).map((item) => item.details.word);
+  // "changes" is a verb in every occurrence and follows no determiner.
+  assert.ok(!words.includes("change"), "a verb must not be offered as a noun");
+  assert.ok(words.includes("code"), "a noun behind a determiner at two levels is shared");
+  // "engineer" appears twice but behind "an" only once at each level, and
+  // "system" only at product — one level is not shared under any reading.
+  assert.ok(!words.includes("system"));
+});
+
+test("declaring the word removes the finding, which PL0804 cannot do", async () => {
+  const { root, config } = await createRepository();
+  const nodes = [
+    statement("context.one", "context", "An engineer cannot find the claim that governs the code."),
+    statement("product.one", "product", "The system marks a claim stale when the claim changes."),
+  ];
+  assert.equal(sharedNounDiagnostics(nodes, []).length, 1);
+
+  await writeTerm(root, {
+    id: "term.claim",
+    level: "context",
+    name: "claim",
+    definition: "A claim is what one node states and the levels below it must keep true.",
+  });
+  const terms = (await inspectWorkingTree(config)).validation.terms;
+  // Acting on the finding removes it. Three states, three reports, no overlap:
+  // undeclared is PL0807, declared and unmarked is PL0801, declared and marked
+  // is nothing.
+  assert.deepEqual(sharedNounDiagnostics(nodes, terms), []);
+  assert.equal(unmarkedUseDiagnostics(nodes, terms).length, 1);
+});
+
+test("check names the vocabulary surface, because nothing else ever did", () => {
+  const withWords = renderSummary({
+    diagnostics: [{ code: "PL0201 MISSING_BEHAVIOR", severity: "info", message: "x" }],
+    wordFindings: 6,
+  });
+  // The whole PL08xx family was reachable only by a reader who already knew the
+  // command existed — the state PL0920 was built to rescue references from.
+  assert.match(withWords, /product-lint vocabulary\s+6 finding\(s\) about the words themselves/);
+
+  const without = renderSummary({
+    diagnostics: [{ code: "PL0201 MISSING_BEHAVIOR", severity: "info", message: "x" }],
+  });
+  assert.doesNotMatch(without, /product-lint vocabulary/);
+});
+
+test("word findings keep the commit brief alive on a finished graph", () => {
+  // A complete graph is exactly when they are the only thing left. A silent
+  // brief there reads as "nothing to do" while five findings wait behind a
+  // command nobody has been told about.
+  const brief = renderBrief({ diagnostics: [], wordFindings: 5 });
+  assert.match(brief, /product-lint vocabulary/);
+  assert.equal(renderBrief({ diagnostics: [] }), "", "and a truly finished graph stays silent");
 });

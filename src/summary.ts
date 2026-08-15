@@ -40,6 +40,12 @@ export interface SummaryInput {
   graph?: KnowledgeGraph;
   scope?: ScopeSummary;
   ignored?: { smell: string; nodeId?: string; because: string }[];
+  /**
+   * How many findings `product-lint vocabulary` is holding, so this surface can
+   * name it. Without the line the whole PL08xx family is reachable only by a
+   * reader who already knows the command exists.
+   */
+  wordFindings?: number;
   /** Rows to print before folding the rest into one line. */
   limit?: number;
 }
@@ -189,6 +195,16 @@ export function renderSummary(input: SummaryInput): string {
     )?.nodeId;
     if (subject) {
       next.push([`product-lint llms affected-by ${subject}`, "what a shape finding covers"]);
+    }
+    // The word findings are a periodic review rather than a repair list, so they
+    // stay out of the rows — and they are info, so folding them in would have
+    // sorted them under "and N more" on any graph with real work outstanding,
+    // which is the invisibility this line exists to end. A footer always prints.
+    if (input.wordFindings) {
+      next.push([
+        "product-lint vocabulary",
+        `${input.wordFindings} finding(s) about the words themselves`,
+      ]);
     }
     next.push(["product-lint check --full", "every finding with its repair"]);
     if (input.scope) next.push(["product-lint check --all", "include the deferred problems"]);
@@ -386,7 +402,11 @@ export function renderRefusal(diagnostics: Diagnostic[]): string {
 export function renderBrief(input: SummaryInput): string {
   const rows = summaryRows(input.diagnostics, input.graph);
   const limit = input.limit ?? 3;
-  if (rows.length === 0 && !input.scope) return "";
+  // Word findings keep the brief alive on their own. A finished graph is exactly
+  // when they are the only thing left, and it is the moment a silent brief would
+  // read as "nothing to do" while five of them wait behind a command nobody has
+  // been told about.
+  if (rows.length === 0 && !input.scope && !input.wordFindings) return "";
 
   const lines: string[] = [];
   const shown = rows.slice(0, limit);
@@ -420,13 +440,16 @@ export function renderBrief(input: SummaryInput): string {
     );
   }
   if (rest.length > 0) lines.push("", `  ${rest.join(" · ")}`);
-  if (lines.length > 0) {
+  if (lines.length > 0 || input.wordFindings) {
     // Point at the one that answers "so what do I do about the first row".
-    lines.push(
-      input.diagnostics.some(isFrontierObligation)
-        ? "  product-lint frontier   ·   product-lint check"
-        : "  product-lint check",
-    );
+    const next = input.diagnostics.some(isFrontierObligation)
+      ? ["product-lint frontier", "product-lint check"]
+      : ["product-lint check"];
+    // Named here too, because the commit is the one moment this output is
+    // certain to be read, and a reader who never learns the command exists
+    // never runs it.
+    if (input.wordFindings) next.push("product-lint vocabulary");
+    lines.push(`  ${next.join("   ·   ")}`);
   }
   return lines.length > 0 ? `${lines.join("\n")}\n` : "";
 }

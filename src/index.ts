@@ -59,6 +59,7 @@ export {
   affectedByTerm,
   capitalizedUndeclaredDiagnostics,
   rejectedNameUseDiagnostics,
+  sharedNounDiagnostics,
   synonymCandidateDiagnostics,
   unmarkedUseDiagnostics,
   unusedTermDiagnostics,

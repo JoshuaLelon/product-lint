@@ -5,7 +5,7 @@
   ],
   "id": "mechanism.the-change-classifier",
   "implementation": {
-    "digest": "sha256:product-lint-implementation-v1:43a79aeae5740d1663b13709eda5fcabe9b9f2dd4f6357cb2d54076941187ae1",
+    "digest": "sha256:product-lint-implementation-v1:d81b04e4861dfed04a1a9c9d22923d13c893c389f73bdfc011ba316fefc91fe4",
     "files": [
       "src/commit.ts",
       "src/removal.ts",

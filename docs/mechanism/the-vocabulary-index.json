@@ -5,7 +5,7 @@
   ],
   "id": "mechanism.the-vocabulary-index",
   "implementation": {
-    "digest": "sha256:product-lint-implementation-v1:0e5834dc9911609620f03127a01c8d8488f98b721e426be0252c401beb6753ce",
+    "digest": "sha256:product-lint-implementation-v1:916fd38b0229f02c97699ebe9a41699e04905dfca659eedef98f64b52417bd73",
     "files": [
       "src/terms.ts",
       "src/vocabulary.ts",

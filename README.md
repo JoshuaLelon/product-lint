@@ -858,6 +858,26 @@ npx product-lint vocabulary            # the review surface, exit 0 always
 npx product-lint vocabulary --staged   # scoped to the staged diff
 ```
 
+`PL0807 SHARED_UNDECLARED_NOUN` is the on-ramp: the nouns this graph keeps returning to that
+no term defines. Every other report here needs something to already exist — a declared term
+for `PL0801`, two for `PL0802`, a mid-sentence-capital habit for `PL0803` — so a graph
+written from scratch got zero signal from all three, forever.
+
+It is **ranked, not thresholded**, and that is the design. A threshold asserts "these *are*
+candidates", which is a judgement needing calibration against graphs nobody has yet. A rank
+asserts "these are the most shared, look at them", which needs none. The floor — a word in
+at least two statements at two levels — is the definition of *shared* rather than a tuned
+number, and the top five is a display cap like `LEVEL_SAMPLE_LIMIT`.
+
+Breadth, not frequency: frequency puts `system` and the deepest layer's boilerplate on top,
+and a word carrying meaning *down* the graph is what a term is. A determiner is the noun
+test — `the claim` counts, `changes` does not — so it needs no tagger and no dictionary.
+
+It does not find synonyms. It starts the chain that finds them: declare the word, and
+`PL0801` hands you every unmarked use to read, which is where a second word for the same
+thing shows itself. And it **self-quiets** — a declared name leaves the report, so acting on
+a finding removes it, which `PL0804` cannot do.
+
 `PL0801 UNMARKED_TERM_USE` finds a declared name used unmarked at the term's level or
 deeper — never shallower, never verb forms, never inside quotes — grouped one block per
 term so a common word folds instead of flooding. The scan carries no dictionary: zero
@@ -1030,6 +1050,13 @@ report. Each one answers a different question, and each names the next one down.
 | `check --full` | what are all the repairs? | every finding, with its block |
 | `frontier` | write me the next node | one work order |
 | `diff [<ref>]` | what did this branch change about the product? | claims added, withdrawn, restated |
+
+`check` and the commit brief name `product-lint vocabulary` whenever the graph has word
+findings. Until 0.22.0 nothing did: `check` never called `vocabularyReport` at all, no footer
+mentioned the command, and the brief's three rows sort by severity, so the info-level word
+findings landed under "and N more" on any graph with real work outstanding. The whole PL08xx
+family was reachable only by a reader who already knew the command existed — the same state
+`PL0920` was built to rescue references from.
 
 The layering matters most at the bottom. **`frontier` is not a report, it is a work order**:
 it carries the node template, the level's authority question, the sibling nodes to read

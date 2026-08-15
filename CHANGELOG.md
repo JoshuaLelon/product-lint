@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.22.0
+
+**`check` and the commit brief name `product-lint vocabulary`.** Until now nothing did.
+`check` never called `vocabularyReport` at all — `cli.ts` was the only call site, inside the
+`vocabulary` command block — no footer mentioned the command, and although the commit brief
+does carry `PL0801` and `PL0806` for changed statements, its three rows sort by severity, so
+info-level word findings landed under "and N more" on any graph with real work outstanding.
+
+Six diagnostics were therefore reachable only by a reader who already knew the command
+existed, which is the state `PL0920` was built to rescue references from, quoted in its own
+header: *"a mistake surfaced only if someone already knew to ask about that exact node."* An
+agent reads the summary; the summary never named the surface; the surface may as well not
+have existed.
+
+A count and a footer line rather than folding the findings into the rows. Folding would not
+have fixed it — they are info, the rows sort by severity first — and word findings are a
+periodic review rather than a repair list. A footer always prints.
+
+**`PL0807 SHARED_UNDECLARED_NOUN` is the on-ramp the vocabulary feature never had.**
+
+`PL0801` needs a declared term, `PL0802` needs two, `PL0803` needs a mid-sentence-capital
+habit that a graph written from scratch does not have. "Zero declared terms, zero noise" is
+the right property and it also means the feature never starts: this repository wrote 53
+statements, declared nothing, and the report was silent while `claim` and `decision` sat in
+it naming one thing.
+
+**Ranked, not thresholded.** A threshold asserts "these *are* candidates", a judgement
+needing calibration against graphs nobody has yet — the tool already carries three
+uncalibrated smell numbers and did not need two more. A rank asserts "these are the most
+shared, look at them", which needs none. The floor is a word in at least two statements at
+two levels, which is the definition of *shared* rather than a tuned number, and the top five
+is a display cap like `LEVEL_SAMPLE_LIMIT`.
+
+**Breadth, not frequency.** The first draft ranked by count and put `system` (29 uses, two
+levels) on top with `module` and `implement` under it — one level each, boilerplate of the
+deepest layer. A word carrying meaning *down* the graph is what a term is. A determiner is
+the noun test: `the claim` counts, `changes` does not, so it needs no tagger and no
+dictionary.
+
+It does not find synonyms — a context-window detector for those was written, tested against
+this repository's pre-fix graph, returned `file/name` and `statement/problem` and never found
+`claim/decision`, and was discarded. What this does is start the chain that finds them:
+declare the word, and `PL0801` hands you every unmarked use to read.
+
+**Self-quieting**, which is why it is safe on a review surface: a declared name leaves the
+report, so acting on a finding removes it. `PL0804` has no such property.
+
 ## 0.21.0
 
 **`PL1210 UNREACHABLE_REFERENCE` refuses a reference no surface can reach.**
