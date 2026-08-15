@@ -6,8 +6,8 @@
   "id": "product.the-shape-of-the-recorded-decisions-is-reported",
   "level": "product",
   "schemaVersion": 1,
-  "statement": "The system reports where the shape of the recorded decisions is uneven, and says when that shape is correct.",
+  "statement": "The system reports where the shape of the recorded claims is uneven, and says when that shape is correct.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:340aff4b9aa9135667e846db2acf448a80b2c69f28581ff042daf569ef955516"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:1bac809abbaebef5569f478a1411121f9d3e5fcb4ad679deba7844af18962f9a"
   }
 }

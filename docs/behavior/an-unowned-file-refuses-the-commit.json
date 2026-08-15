@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "When an engineer stages a change to a file that no node owns, the system refuses the commit and names the file.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:bd08eec17cf10c0ec237420e0fdad7ac14662cc7caef932075372160821dabde"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:921e1bcc2f323ad7d2b628b570891d67aad801fb5ef4cc339ac524710ee7bbde"
   }
 }

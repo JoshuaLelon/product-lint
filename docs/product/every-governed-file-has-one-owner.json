@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "The system gives every governed file exactly one owner that says what the file is for.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:fc053489206696e35ab97bed0232fd72d25319d76c395d377cfdb2c91eebb824"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:b8884a042b74be069979d60f28e80e27e1933873c0549066cb3894500155ab17"
   }
 }

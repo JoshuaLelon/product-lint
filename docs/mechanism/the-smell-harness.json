@@ -15,6 +15,6 @@
   "schemaVersion": 1,
   "statement": "The smells module implements the shape detectors and the filter that runs before them.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:c0f56b9a171d0ab3b70daa30543341a15cd0baea472ae485614eb576d36e11f6"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:98599a4aa11c25ee5329117ac655c79f4782c832e7d1fd4ac94ee10d7d9dfeb6"
   }
 }

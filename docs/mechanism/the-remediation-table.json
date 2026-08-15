@@ -15,6 +15,6 @@
   "schemaVersion": 1,
   "statement": "The remediation module implements the repair, question, and rule attached to each code.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:2081d29e57cafac4f9bba9248b2d85e72979ca997913e0c23ad3bcbc545db308"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:ed74f55976899faa3c45870e77e3eac0e378e923a55cfbda159e0a1789f57721"
   }
 }

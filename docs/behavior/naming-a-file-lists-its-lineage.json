@@ -6,8 +6,8 @@
   "id": "behavior.naming-a-file-lists-its-lineage",
   "level": "behavior",
   "schemaVersion": 1,
-  "statement": "When an engineer names a file, the system lists every decision that governs it, from the problem down to the code.",
+  "statement": "When an engineer names a file, the system lists every claim that governs it, from the problem down to the code.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:462ce7b117197e2462cca5eaf4d8974539e38f7e7eb000ddd11b53c1290113cd"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:cfe5224331a87e7b43ef78e28f463aa199aeffdb64c44e8c836b68a4ac6d117c"
   }
 }

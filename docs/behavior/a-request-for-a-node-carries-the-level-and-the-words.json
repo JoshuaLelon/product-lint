@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "When the system asks an engineer for a new node, it shows the nodes already at that level and the words already defined.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:f61e20aef0f1106a45d6f62550663029fceb36085092092315dbb7462c00f8d6"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:3f65fd776ba40d763c88391ec813d0f2e4d177fb75aefb87a70a9c33c2419d0f"
   }
 }

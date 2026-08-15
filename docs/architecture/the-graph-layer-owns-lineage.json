@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "The graph layer owns lineage, so no other layer walks parents to answer what governs a file.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:95892388a4f7aa17b4118060b37b050e868abbc0fd705c0fec41f6687460143d"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:25ee7876c1bca7007ee9c68bde6ff1ddd07cd6c9d4924b9cac7d56db7458cec1"
   }
 }

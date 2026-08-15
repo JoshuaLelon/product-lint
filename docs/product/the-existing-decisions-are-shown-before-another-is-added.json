@@ -7,8 +7,8 @@
   "id": "product.the-existing-decisions-are-shown-before-another-is-added",
   "level": "product",
   "schemaVersion": 1,
-  "statement": "The system shows the decisions already recorded at a level before an engineer adds another one.",
+  "statement": "The system shows the claims already recorded at a level before an engineer adds another one.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:cd54fedb10cc8bc831c5f8d781a7e2449310395893621741b4afc9639c7fd408"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:4a3bba048ff41606530eae9d0dd1e574dd84144a83b3168d3cb894922fe5d0f3"
   }
 }

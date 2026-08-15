@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "The shape harness removes drafts and deferred nodes before a detector runs, so no detector carries that rule.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:6fe3db52268cec7da236ce3da78b7f13b78c56d5759e6c947a788f93b28d7712"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:48a38b472993dad24ef7e45c0ff5afeb2982767f9c7595a1ce990f8bd048a6a7"
   }
 }

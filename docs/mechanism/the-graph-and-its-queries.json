@@ -25,6 +25,6 @@
   "schemaVersion": 1,
   "statement": "The graph, validation, queries, llms, audience, and types modules implement lineage and the questions asked of it.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:8689175ffb10a78c999e5245d6c3f32120c9b78b84a0efd74f0f231ddfd876a4"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:5c666171d703101ed66da9adf6f872dc2a07507e304ce46cf89670fb3e1b14a1"
   }
 }

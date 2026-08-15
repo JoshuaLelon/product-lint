@@ -22,6 +22,6 @@
   "schemaVersion": 1,
   "statement": "The frontier, overlap, adopt, and glob modules implement binding nodes to files.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:b23b1d49d80969839b865b7ea118da728f277e836fef431c75bfd6a73a397554"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:930338bceca070dc78e5414631a792e278c122622901dea292d1e117c8c61024"
   }
 }

@@ -8,6 +8,6 @@
   "schemaVersion": 1,
   "statement": "When an engineer asks for the shape, the system names each uneven place and says what would make it correct.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:3ca20e62570cae24d39770e337759dbfca53094dc7bdde64412a288da1086398"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:589a6005424be2514ae35db52521ae6a9959286e8d4e143659c3b40303250e29"
   }
 }

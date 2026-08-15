@@ -9,6 +9,6 @@
   "schemaVersion": 1,
   "statement": "Only the deepest level binds to files, so file ownership has exactly one place to be resolved.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:3a9093d47415f2ea0d26e85b363c243ea40479024de14d47dff63904ba8e056f"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:e7308cdae72e0742e0a44c3630603dc6dba7d1c27b7a3d2b4ad613c3a34e5d17"
   }
 }

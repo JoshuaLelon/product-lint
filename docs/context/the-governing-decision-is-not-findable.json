@@ -6,7 +6,7 @@
   "id": "context.the-governing-decision-is-not-findable",
   "level": "context",
   "schemaVersion": 1,
-  "statement": "An engineer cannot find the decision that governs the code they are about to change.",
+  "statement": "An engineer cannot find the claim that governs the code they are about to change.",
   "sync": {
     "constraintsDigest": "sha256:product-lint-constraints-v1:d1f2cf43f965ad01c6d7c3b798d9ee4e474c4879c578688afa3f40c7c7a28d4a"
   }
