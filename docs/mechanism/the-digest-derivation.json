@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.every-digest-is-derived-and-compared"
+  ],
+  "id": "mechanism.the-digest-derivation",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:c2150e54bcfa383d7a5d2874a00c89520de06954469f59024568aef336c4acac",
+    "files": [
+      "src/sync.ts",
+      "src/stable-json.ts",
+      "test/sync.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The sync and stable-json modules implement deriving a digest and comparing it.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f0f8c2d081ddc86cb0a634640b34e7d0926d335c55136502d92316501596c2bd"
+  }
+}

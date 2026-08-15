@@ -1,0 +1,22 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.no-layer-decides-whether-a-statement-is-true"
+  ],
+  "id": "mechanism.the-recorded-mistake",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:0542b398128d2694b647f54617e58af1659ba5881be5725ccc367112afde8917",
+    "files": [
+      "src/mistakes.ts",
+      "src/references.ts",
+      "test/mistakes.test.mjs",
+      "test/reference.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The mistakes and references modules implement recording a wrong claim and reading it back.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:8a7242fb4db3b48e1816d140b5b33b1555bb476feca05aac6c073440175bfffa"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.only-the-deepest-level-binds-to-files"
+  ],
+  "id": "mechanism.the-file-binding",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:56131a2c99d724c4057c558e1b6e60e2001dc15503704b2f0b932678c4d7ed60",
+    "files": [
+      "src/overlap.ts",
+      "src/frontier.ts",
+      "src/adopt.ts",
+      "src/glob.ts",
+      "test/overlap.test.mjs",
+      "test/frontier.test.mjs",
+      "test/adopt.test.mjs",
+      "test/adoption.test.mjs",
+      "test/shape.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The frontier, overlap, adopt, and glob modules implement binding nodes to files.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:b23b1d49d80969839b865b7ea118da728f277e836fef431c75bfd6a73a397554"
+  }
+}

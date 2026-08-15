@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.scope-removes-obligations-and-never-invariants"
+  ],
+  "id": "mechanism.the-scope-filter",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:a3a73bff1581fea4729431a4e41e5980584077ad67da65ac49defe88ab61c23f",
+    "files": [
+      "src/scope.ts",
+      "test/scope.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The scope module implements deferring a problem and counting what it silenced.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:d8219906687234c842a1bacc441fa06a81fbe1d8d83502218ba31f0b67412ae4"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.the-harness-filters-before-a-detector-runs"
+  ],
+  "id": "mechanism.the-smell-harness",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:57109f797304cb8616832c35d2fdf94dca64712297364c16f9e83f44c91fe602",
+    "files": [
+      "src/smells.ts",
+      "test/smells.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The smells module implements the shape detectors and the filter that runs before them.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:c0f56b9a171d0ab3b70daa30543341a15cd0baea472ae485614eb576d36e11f6"
+  }
+}

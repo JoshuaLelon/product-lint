@@ -1,0 +1,14 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "behavior.a-check-opens-with-the-highest-leverage-findings",
+    "behavior.asking-what-a-branch-changed-lists-the-claims"
+  ],
+  "id": "architecture.two-entry-points-share-one-implementation",
+  "level": "architecture",
+  "schemaVersion": 1,
+  "statement": "The command line dispatches to functions the library also exports, so a surface can be tested without spawning a process.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:252c545c2f1def1b7f74ef0c5f5b0ca8bce773d708ce700307b1a1f3b17656a1"
+  }
+}

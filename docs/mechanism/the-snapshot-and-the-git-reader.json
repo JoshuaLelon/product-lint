@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.one-snapshot-type-serves-every-ref"
+  ],
+  "id": "mechanism.the-snapshot-and-the-git-reader",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:a3c6f38349554b4d5d51b9d992f2a2e0acb1bb73b0053010bc2d5f1117f0cd91",
+    "files": [
+      "src/repository.ts",
+      "src/git.ts",
+      "test/git-changes.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The snapshot and git modules implement reading a ref.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:dab65011b502aa110d5405f1f739eb88d535f1e6b52bdc989b7ab6ab64174583"
+  }
+}

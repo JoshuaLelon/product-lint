@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.two-entry-points-share-one-implementation"
+  ],
+  "id": "mechanism.the-entry-points",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:d3ba06145da5ed2ae99f4d28db78db0eb66e412f1117839ac2ae231b72b2c9eb",
+    "files": [
+      "src/cli.ts",
+      "src/index.ts"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The cli and index modules implement the command line and the library surface.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:4cc1bc452fe79e6c59c16b22b342e4c24a87e31d7c7e53fd374c318bc6901d34"
+  }
+}

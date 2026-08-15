@@ -1,0 +1,24 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.one-classifier-decides-what-a-claim-change-is"
+  ],
+  "id": "mechanism.the-change-classifier",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:43a79aeae5740d1663b13709eda5fcabe9b9f2dd4f6357cb2d54076941187ae1",
+    "files": [
+      "src/commit.ts",
+      "src/removal.ts",
+      "src/diff.ts",
+      "test/commit.test.mjs",
+      "test/removal.test.mjs",
+      "test/diff.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The commit, removal, and diff modules implement classifying a change.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:8ae9b80f40468af84505c164f4843eb596df35760d276e49e8287507a1a41f97"
+  }
+}

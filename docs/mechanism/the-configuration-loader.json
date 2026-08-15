@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.configuration-is-refused-at-load"
+  ],
+  "id": "mechanism.the-configuration-loader",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:b94f52d15cdd9a90f8c89d5e6d88196485ee4a9da593af03fbf0d7797a7a4a78",
+    "files": [
+      "src/config.ts",
+      "src/init.ts",
+      "test/init.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The config and init modules implement loading a configuration and provisioning a repository.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:9b73974d31bc18ac97ad54c57c59b204b7c35549430fe4fe24b7c6eca6206545"
+  }
+}

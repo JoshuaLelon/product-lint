@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.one-layer-orders-and-folds-every-report"
+  ],
+  "id": "mechanism.the-report-summary",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:a929ce7edb75bbc12a1b085616711b07e841df2ba9a2ea1243d56bc9490b3d52",
+    "files": [
+      "src/summary.ts",
+      "src/status.ts",
+      "test/summary.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The summary and status modules implement ordering and folding a report.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:d8b8221233db355f671da33926b1d7ac8c2b5fec265e2a6321582266675a1743"
+  }
+}

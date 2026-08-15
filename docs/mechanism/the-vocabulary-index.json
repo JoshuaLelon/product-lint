@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.one-index-resolves-every-marked-word"
+  ],
+  "id": "mechanism.the-vocabulary-index",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:0e5834dc9911609620f03127a01c8d8488f98b721e426be0252c401beb6753ce",
+    "files": [
+      "src/terms.ts",
+      "src/vocabulary.ts",
+      "test/vocabulary.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The terms and vocabulary modules implement declaring a name and resolving a mark.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:9352e419063e00182f929e23b34409faa3eeef90221e77941546466de4335d9a"
+  }
+}

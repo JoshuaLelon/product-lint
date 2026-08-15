@@ -1,0 +1,30 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.the-graph-layer-owns-lineage"
+  ],
+  "id": "mechanism.the-graph-and-its-queries",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:cad4ed7992f169ceabc01e8c9f9fd2940ed4e276befd9171a0f8f604323a37ae",
+    "files": [
+      "src/graph.ts",
+      "src/queries.ts",
+      "src/llms.ts",
+      "src/audience.ts",
+      "src/validation.ts",
+      "src/types.ts",
+      "test/graph.test.mjs",
+      "test/query.test.mjs",
+      "test/audience.test.mjs",
+      "test/validation.test.mjs",
+      "test/invariants.test.mjs",
+      "test/_helpers.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The graph, validation, queries, llms, audience, and types modules implement lineage and the questions asked of it.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:8689175ffb10a78c999e5245d6c3f32120c9b78b84a0efd74f0f231ddfd876a4"
+  }
+}

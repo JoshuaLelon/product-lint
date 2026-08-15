@@ -1,0 +1,20 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.one-table-owns-every-repair-and-rule"
+  ],
+  "id": "mechanism.the-remediation-table",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:9d864d028f1477a5df0a250461af0e9cb24dc4f788228cda59de4a3ef08cb0e7",
+    "files": [
+      "src/remediation.ts",
+      "test/remediation.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The remediation module implements the repair, question, and rule attached to each code.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:2081d29e57cafac4f9bba9248b2d85e72979ca997913e0c23ad3bcbc545db308"
+  }
+}

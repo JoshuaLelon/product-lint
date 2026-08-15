@@ -1,0 +1,21 @@
+{
+  "$schema": "../../schema/canonical-node.schema.json",
+  "constrainedBy": [
+    "architecture.a-detector-never-formats-its-own-finding"
+  ],
+  "id": "mechanism.the-diagnostic-renderer",
+  "implementation": {
+    "digest": "sha256:product-lint-implementation-v1:f41f92687894dacdc2694d09257ba9e0c18c4c3aa2cdd889cbc854d88675550f",
+    "files": [
+      "src/diagnostics.ts",
+      "src/tree.ts",
+      "test/tree.test.mjs"
+    ]
+  },
+  "level": "mechanism",
+  "schemaVersion": 1,
+  "statement": "The diagnostics and tree modules implement printing a finding.",
+  "sync": {
+    "constraintsDigest": "sha256:product-lint-constraints-v1:e70fcda8b020a99d66c4d9d16ee67051258af6a75314dddc93475064a26fa65e"
+  }
+}
