@@ -1,0 +1,21 @@
+{
+  "name": "product-lint-tui",
+  "private": true,
+  "type": "module",
+  "description": "Walking skeleton of the graph editor. Not published: the root package's files list excludes this directory, so product-lint stays a zero-dependency install for the repositories that only want the hooks.",
+  "scripts": {
+    "start": "bun main.tsx",
+    "browse": "PL_TUI_PREFETCH=off bun main.tsx",
+    "test": "tsc -p tsconfig.json --noEmit && FORCE_COLOR=3 bun smoke.tsx",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "ink": "^7.1.1",
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.14",
+    "@types/react": "^19.2.18"
+  }
+}
