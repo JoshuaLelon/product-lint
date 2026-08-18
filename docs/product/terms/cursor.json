@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "The cursor is the node the reader is on, and the one an action runs against.",
+  "id": "term.cursor",
+  "level": "product",
+  "name": "cursor",
+  "rejected": [
+    {
+      "because": "Focus already names which pane takes the arrow keys.",
+      "name": "focus",
+      "stance": "taken"
+    },
+    {
+      "because": "A selection is a set; the cursor is a single node inside it.",
+      "name": "selection",
+      "stance": "taken"
+    }
+  ],
+  "schemaVersion": 1
+}

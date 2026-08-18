@@ -1,0 +1,12 @@
+{
+  "$schema": "../../schema/reference-node.schema.json",
+  "id": "reference.decision.architecture-split-from-mechanism",
+  "kind": "decision",
+  "relatedNodes": [
+    "architecture.only-the-deepest-level-binds-to-files",
+    "context.a-new-decision-cannot-be-fitted-to-the-old-ones",
+    "product.a-claim-goes-stale-when-what-it-rests-on-changes"
+  ],
+  "schemaVersion": 1,
+  "statement": "Architecture was kept separate from mechanism so that a claim about structure outlives the files that implement it."
+}

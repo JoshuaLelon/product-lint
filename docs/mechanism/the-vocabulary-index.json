@@ -14,8 +14,9 @@
   },
   "level": "mechanism",
   "schemaVersion": 1,
-  "statement": "The terms and vocabulary modules implement declaring a name and resolving a mark.",
+  "statement": "The terms and vocabulary modules implement declaring a name and resolving a *mark*.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:9352e419063e00182f929e23b34409faa3eeef90221e77941546466de4335d9a"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:9352e419063e00182f929e23b34409faa3eeef90221e77941546466de4335d9a",
+    "vocabularyDigest": "sha256:product-lint-vocabulary-v1:73860724eb78bc9850ff6fbefb67c776defc790a25beb0cb811232d9b2975dbf"
   }
 }

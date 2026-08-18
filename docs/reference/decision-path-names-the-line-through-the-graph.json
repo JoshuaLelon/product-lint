@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schema/reference-node.schema.json",
+  "id": "reference.decision.path-names-the-line-through-the-graph",
+  "kind": "decision",
+  "relatedNodes": [
+    "architecture.one-classifier-decides-what-a-claim-change-is",
+    "architecture.two-entry-points-share-one-implementation"
+  ],
+  "schemaVersion": 1,
+  "statement": "Path names one line through the graph and nothing else, so the code that runs on commit is called the commit command, which is the word the graph already used for a command."
+}

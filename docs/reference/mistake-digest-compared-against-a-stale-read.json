@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/reference-node.schema.json",
+  "evidence": {
+    "commit": "1564331214636b4e4f68cdc776f9180364e70e07",
+    "files": [{ "path": "src/sync.ts" }]
+  },
+  "id": "reference.mistake.digest-compared-against-a-stale-read",
+  "kind": "mistake",
+  "relatedNodes": [
+    "architecture.every-digest-is-derived-and-compared",
+    "mechanism.the-digest-derivation"
+  ],
+  "schemaVersion": 1,
+  "statement": "The digest was compared against the value stored in the node file, so a hand-edited digest made a stale claim report as synchronized."
+}

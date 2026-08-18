@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A view is one way of choosing and arranging the nodes around the anchor.",
+  "id": "term.view",
+  "level": "product",
+  "name": "view",
+  "rejected": [
+    {
+      "because": "A mode changes what the keys do; a view changes only which nodes are drawn and how.",
+      "name": "mode",
+      "stance": "wrong"
+    },
+    {
+      "because": "A screen is the whole window, and several views share it with the other panes.",
+      "name": "screen",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

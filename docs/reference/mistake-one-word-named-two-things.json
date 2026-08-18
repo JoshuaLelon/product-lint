@@ -1,0 +1,15 @@
+{
+  "$schema": "../../schema/reference-node.schema.json",
+  "evidence": {
+    "commit": "51e60cba6d2f0a8fb3813c0d66f18a5bee604986",
+    "files": [{ "path": "src/terms.ts" }]
+  },
+  "id": "reference.mistake.one-word-named-two-things",
+  "kind": "mistake",
+  "relatedNodes": [
+    "behavior.two-meanings-for-one-name-refuse-the-commit",
+    "context.one-word-carries-two-meanings"
+  ],
+  "schemaVersion": 1,
+  "statement": "One word named both a node in the graph and a choice a person makes, so a report about one read as a report about the other."
+}

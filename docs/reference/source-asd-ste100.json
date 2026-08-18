@@ -1,0 +1,11 @@
+{
+  "$schema": "../../schema/reference-node.schema.json",
+  "id": "reference.source.asd-ste100",
+  "kind": "source",
+  "relatedNodes": [
+    "product.a-defined-word-used-as-prose-is-reported",
+    "product.one-name-has-one-meaning"
+  ],
+  "schemaVersion": 1,
+  "statement": "ASD-STE100 Simplified Technical English supplies the active-voice, one-sentence rule that every statement in this graph is written under."
+}

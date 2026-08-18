@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A selection is the set of nodes a view covers, from which the vocabulary and the references are drawn.",
+  "id": "term.selection",
+  "level": "product",
+  "name": "selection",
+  "rejected": [
+    {
+      "because": "A highlight is how the set is drawn, not what the set is.",
+      "name": "highlight",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

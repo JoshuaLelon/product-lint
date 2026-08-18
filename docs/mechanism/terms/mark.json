@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A mark is the pair of asterisks that names a declared term inside a statement.",
+  "id": "term.mark",
+  "level": "mechanism",
+  "name": "mark",
+  "rejected": [
+    {
+      "because": "A tag is something you attach to a thing; a mark is written into the sentence itself.",
+      "name": "tag",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

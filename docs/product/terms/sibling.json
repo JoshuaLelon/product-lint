@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A sibling of a node is another node the same parent constrains.",
+  "id": "term.sibling",
+  "level": "product",
+  "name": "sibling",
+  "rejected": [
+    {
+      "because": "A peer says only that two nodes are alike, and says nothing about a shared parent.",
+      "name": "peer",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "borrowed": "Graph theory, where a path is a sequence of edges. Here it always runs top to bottom through the levels, never sideways.",
+  "definition": "A path is one top-to-bottom line through the graph, from a node nothing constrains to a node nothing rests on.",
+  "id": "term.path",
+  "level": "product",
+  "name": "path",
+  "rejected": [
+    {
+      "because": "Lineage already names the parent chain the graph layer owns, which is a different thing from a top-to-bottom line.",
+      "name": "lineage",
+      "stance": "taken"
+    },
+    {
+      "because": "A chain says the links are equal, and a path descends through ordered levels.",
+      "name": "chain",
+      "stance": "wrong"
+    },
+    {
+      "because": "A route is a way through code, which is the sense this word was taken back from; the commit command is called a command.",
+      "name": "route",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

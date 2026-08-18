@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "The coverage is the set of nodes a view reaches, from which the vocabulary and the references are drawn.",
+  "id": "term.coverage",
+  "level": "product",
+  "name": "coverage",
+  "rejected": [
+    {
+      "because": "The reader picks a selection; coverage is derived from the view and never picked.",
+      "name": "selection",
+      "stance": "taken"
+    },
+    {
+      "because": "Reach says how far a view gets, not which nodes it ends up covering.",
+      "name": "reach",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

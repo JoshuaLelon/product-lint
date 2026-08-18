@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A pane is a region of the screen that takes the arrow keys when the reader gives it focus.",
+  "id": "term.pane",
+  "level": "product",
+  "name": "pane",
+  "rejected": [
+    {
+      "because": "Panel and pane would be one word for one thing, written two ways.",
+      "name": "panel",
+      "stance": "taken"
+    },
+    {
+      "because": "A column is where a pane happens to sit, and one pane can hold several.",
+      "name": "column",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

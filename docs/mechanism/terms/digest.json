@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A digest is the hash of the inputs a node rests on, derived on read and never trusted from the file.",
+  "id": "term.digest",
+  "level": "mechanism",
+  "name": "digest",
+  "rejected": [
+    {
+      "because": "A checksum guards against corruption in transit; this guards against a claim drifting from what it rests on.",
+      "name": "checksum",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}

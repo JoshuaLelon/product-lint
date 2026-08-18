@@ -14,8 +14,9 @@
   },
   "level": "mechanism",
   "schemaVersion": 1,
-  "statement": "The sync and stable-json modules implement deriving a digest and comparing it.",
+  "statement": "The sync and stable-json modules implement deriving a *digest* and comparing it.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:f0f8c2d081ddc86cb0a634640b34e7d0926d335c55136502d92316501596c2bd"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f0f8c2d081ddc86cb0a634640b34e7d0926d335c55136502d92316501596c2bd",
+    "vocabularyDigest": "sha256:product-lint-vocabulary-v1:940c641ac006faf2e42ce56233971a21957e7731a2105f340c904a6ffd66465d"
   }
 }

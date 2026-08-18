@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "The anchor is the node a view is built from, and what its selections cycle around.",
+  "id": "term.anchor",
+  "level": "product",
+  "name": "anchor",
+  "rejected": [
+    {
+      "because": "An origin is where something started; the anchor is wherever the reader last put it.",
+      "name": "origin",
+      "stance": "wrong"
+    },
+    {
+      "because": "Focus already names which pane takes the arrow keys, and the two move independently.",
+      "name": "focus",
+      "stance": "taken"
+    }
+  ],
+  "schemaVersion": 1
+}

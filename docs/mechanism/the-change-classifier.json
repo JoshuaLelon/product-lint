@@ -19,6 +19,6 @@
   "schemaVersion": 1,
   "statement": "The commit, removal, and diff modules implement classifying a change.",
   "sync": {
-    "constraintsDigest": "sha256:product-lint-constraints-v1:8ae9b80f40468af84505c164f4843eb596df35760d276e49e8287507a1a41f97"
+    "constraintsDigest": "sha256:product-lint-constraints-v1:f34183298474ca7fb19e2cd0d9f639eb62f356d5bb85e963ce319f35e4dfa3a4"
   }
 }

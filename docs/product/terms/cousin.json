@@ -1,0 +1,15 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A cousin of a node is another node at its level that its parent does not constrain.",
+  "id": "term.cousin",
+  "level": "product",
+  "name": "cousin",
+  "rejected": [
+    {
+      "because": "A sibling shares the parent, which is the distinction this word exists to draw.",
+      "name": "sibling",
+      "stance": "taken"
+    }
+  ],
+  "schemaVersion": 1
+}

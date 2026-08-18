@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../schema/term-node.schema.json",
+  "definition": "A node is regoverned when its constrainedBy list changes, so a claim that still says the same thing now answers to different claims above it.",
+  "id": "term.regoverned",
+  "level": "product",
+  "name": "regoverned",
+  "rejected": [
+    {
+      "because": "Reparented borrows a tree's word, and a node here is allowed many parents at once.",
+      "name": "reparented",
+      "stance": "wrong"
+    },
+    {
+      "because": "Moved suggests the node went somewhere, and it stays exactly where it was.",
+      "name": "moved",
+      "stance": "wrong"
+    }
+  ],
+  "schemaVersion": 1
+}
